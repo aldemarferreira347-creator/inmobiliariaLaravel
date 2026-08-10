@@ -1,0 +1,971 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════════════════
+   TOKENS — García Inmobiliaria (Neiva, Huila)
+   Navy (azul marino profundo, confianza/premium) +
+   Gold (naranja dorado, acento CTA) sobre superficie clara.
+   Basado en paleta de imagen de referencia.
+════════════════════════════════════════════════════════════ */
+@theme {
+  --color-ink:          #0f172a;
+  --color-surface:      #f8f9fc;
+  --color-surface-alt:  #eef1f8;
+
+  --color-navy-950:  #080f26;
+  --color-navy-900:  #0f1e4a;
+  --color-navy-800:  #172560;
+  --color-navy-700:  #1e3177;
+  --color-navy-600:  #2545a8;
+  --color-navy-500:  #3b5fc0;
+  --color-navy-400:  #5b7dd4;
+  --color-navy-300:  #8ba5e4;
+
+  --color-gold-600:  #d4830e;
+  --color-gold-500:  #f5a623;
+  --color-gold-400:  #f7ba4a;
+  --color-gold-300:  #fad080;
+
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-body:    "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ════════════════════════════════════════════════════════════
+   BASE
+════════════════════════════════════════════════════════════ */
+body {
+  @apply bg-(--color-surface) text-(--color-ink) antialiased;
+  font-family: var(--font-body);
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  @apply font-semibold tracking-tight text-(--color-navy-900);
+}
+a { @apply no-underline; }
+.container {
+  @apply mx-auto w-full max-w-6xl px-5;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ICONOS (SVG Lucide inline) + ACCESIBILIDAD
+════════════════════════════════════════════════════════════ */
+/* Los iconos heredan color vía currentColor y se dimensionan con utilidades
+   de ancho/alto. No forzamos tamaño global para no interferir con SweetAlert. */
+.skip-link {
+  @apply sr-only;
+}
+.skip-link:focus {
+  @apply not-sr-only fixed left-4 top-4 z-[200] rounded-lg bg-(--color-gold-500) px-4 py-2 text-sm font-semibold text-(--color-navy-900) shadow-lg;
+}
+.logo-badge {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--color-gold-500) text-(--color-navy-900) shadow-sm;
+}
+.footer-links { @apply space-y-2; }
+.footer-links li { @apply flex items-center gap-2 text-sm text-white/60; }
+.footer-links a { @apply inline-flex items-center gap-2 text-white/60 transition hover:text-(--color-gold-400); }
+
+/* ════════════════════════════════════════════════════════════
+   HEADER / NAV
+════════════════════════════════════════════════════════════ */
+header {
+  @apply sticky top-0 z-50 border-b border-navy-900/10 bg-(--color-navy-900)/95 backdrop-blur shadow-lg shadow-navy-950/30;
+}
+header nav {
+  @apply flex items-center justify-between gap-4 py-4;
+}
+.logo {
+  @apply flex items-center gap-2.5 font-display text-lg font-bold text-white;
+}
+.menu-toggle {
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 text-white transition hover:bg-white/10 md:hidden;
+}
+.nav-links {
+  @apply hidden items-center gap-1 md:flex;
+}
+.nav-links li a {
+  @apply block rounded-full px-4 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white;
+}
+.nav-links li a.active {
+  @apply bg-white/15 text-white font-semibold;
+}
+.nav-links li a.btn-primary,
+.nav-links li a.btn-nav-logout {
+  @apply text-white hover:text-white;
+}
+
+@media (max-width: 767px) {
+  .nav-links {
+    @apply absolute inset-x-0 top-full flex-col items-stretch gap-0 border-b border-white/10 bg-(--color-navy-900) px-5 py-3 shadow-2xl;
+    display: none;
+  }
+  .nav-links.is-open { display: flex; }
+  .nav-links li a { @apply w-full rounded-lg py-3; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   BOTONES
+════════════════════════════════════════════════════════════ */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-(--color-gold-500) px-5 py-2.5 text-sm font-semibold text-(--color-navy-900) shadow-sm transition hover:bg-(--color-gold-400) hover:shadow-md;
+}
+.btn-hero {
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-(--color-gold-500) px-7 py-3.5 text-base font-semibold text-(--color-navy-900) shadow-lg shadow-(--color-gold-500)/30 transition hover:bg-(--color-gold-400) hover:shadow-xl;
+}
+.btn-hero-outline {
+  @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/70 px-7 py-3.5 text-base font-semibold text-white transition hover:border-white hover:bg-white/10;
+}
+.btn-limpiar {
+  @apply inline-flex items-center justify-center gap-1 rounded-full border border-black/10 px-4 py-2.5 text-sm font-medium text-(--color-ink)/70 transition hover:border-(--color-navy-500) hover:text-(--color-navy-600);
+}
+.btn-ver,
+.btn-all-properties {
+  @apply w-full text-center;
+}
+.btn-volver {
+  @apply inline-flex items-center gap-2 text-sm font-semibold text-(--color-navy-600) hover:text-(--color-gold-500);
+}
+.btn-maps {
+  @apply inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-navy-600) hover:text-(--color-gold-500);
+}
+.btn-contactar-asesor {
+  @apply flex w-full items-center justify-center gap-2 rounded-xl bg-(--color-navy-700) px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-(--color-navy-800);
+}
+.btn-toggle-fav-hero {
+  @apply absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-110;
+}
+
+/* ════════════════════════════════════════════════════════════
+   HERO (Home)
+════════════════════════════════════════════════════════════ */
+.hero-section {
+  @apply relative overflow-hidden px-5 py-24 text-center text-white;
+  background: linear-gradient(135deg, #080f26 0%, #0f1e4a 40%, #172560 70%, #1e3177 100%);
+}
+.hero-section::before {
+  content: "";
+  @apply absolute inset-0 pointer-events-none;
+  background: radial-gradient(ellipse 80% 60% at 70% 40%, rgba(59,95,192,0.3) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 50% at 20% 80%, rgba(245,166,35,0.08) 0%, transparent 60%);
+}
+.hero-particles span {
+  @apply absolute rounded-full bg-white/8;
+}
+.hero-particles span:nth-child(1) { @apply left-[8%] top-[15%] h-20 w-20 animate-pulse; opacity: 0.15; }
+.hero-particles span:nth-child(2) { @apply right-[6%] top-[25%] h-36 w-36 animate-pulse; animation-delay: .4s; opacity: 0.1; }
+.hero-particles span:nth-child(3) { @apply bottom-[15%] left-[15%] h-14 w-14 animate-pulse; animation-delay: .8s; opacity: 0.12; }
+.hero-content { @apply relative z-10 mx-auto max-w-3xl; }
+.hero-badge {
+  @apply mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur;
+}
+.hero-badge svg { @apply text-(--color-gold-400); }
+.hero-actions .btn-hero,
+.hero-actions .btn-hero-outline { @apply w-full sm:w-auto; }
+.cta-actions { @apply relative z-10 flex flex-wrap justify-center gap-4; }
+.ver-todos-wrap { @apply my-12 text-center; }
+.hero-content h1 {
+  @apply mb-5 font-display text-4xl font-bold leading-tight text-white sm:text-5xl;
+}
+.hero-content h1 span { @apply text-(--color-gold-400); }
+.hero-content p { @apply mb-8 text-base leading-relaxed text-white/75 sm:text-lg; }
+.hero-actions { @apply flex flex-wrap justify-center gap-4; }
+.fade-up { animation: fadeUp .6s ease-out both; }
+.fade-up-delay-1 { animation-delay: .12s; }
+.fade-up-delay-2 { animation-delay: .24s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .hero-particles span { animation: none; }
+}
+
+/* ── Estadísticas ── */
+.stats-strip {
+  @apply -mt-12 grid grid-cols-2 gap-4 rounded-2xl bg-white p-6 shadow-xl shadow-navy-900/10 sm:grid-cols-4 relative z-10;
+  border-top: 3px solid #f5a623;
+}
+.stat-item { @apply text-center; }
+.stat-number { @apply block font-display text-3xl font-bold text-(--color-navy-700); }
+.stat-label { @apply block text-sm text-(--color-ink)/60 uppercase tracking-wide text-xs mt-0.5; }
+
+/* ════════════════════════════════════════════════════════════
+   FILTROS
+════════════════════════════════════════════════════════════ */
+.filtros {
+  @apply my-10 rounded-2xl border border-black/5 bg-white p-6 shadow-sm;
+}
+.filtros h2 { @apply mb-4 flex items-center gap-2 text-xl; }
+.filtros h2 svg { @apply text-(--color-navy-500); }
+.filtro-inputs { @apply grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5; }
+.filtro-inputs input,
+.filtro-inputs select {
+  @apply w-full rounded-lg border border-black/10 bg-(--color-surface) px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
+}
+.botones-filtro { @apply flex gap-2 lg:col-span-1; }
+.resultado-filtro { @apply mb-5 inline-flex items-center gap-2 text-sm text-(--color-ink)/70; }
+
+/* ════════════════════════════════════════════════════════════
+   SECCIÓN TÍTULO / GRID DE INMUEBLES
+════════════════════════════════════════════════════════════ */
+.seccion-titulo { @apply mb-8 mt-4 text-center; }
+.seccion-titulo h2 { @apply text-2xl sm:text-3xl; }
+.seccion-subtitulo { @apply mt-2 text-(--color-ink)/60; }
+.inmuebles-grid {
+  @apply grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3;
+}
+.empty-state {
+  @apply col-span-full flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white px-6 py-16 text-center text-(--color-ink)/60;
+}
+.empty-state-icon { @apply mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-navy-500); }
+.empty-state-title { @apply font-display text-lg font-semibold text-(--color-navy-900); }
+.empty-state-sub { @apply max-w-sm text-sm text-(--color-ink)/55; }
+.empty-state .btn-primary,
+.empty-state .btn-all-properties { @apply mt-3; }
+.card {
+  @apply flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-navy-900/8;
+}
+.card-img-wrap { @apply relative aspect-[3/2] w-full overflow-hidden bg-(--color-surface-alt); }
+.card-img-wrap img { @apply h-full w-full object-cover transition duration-300 hover:scale-105; }
+.codigo-badge {
+  @apply absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur;
+}
+.card-body { @apply flex flex-1 flex-col gap-2 p-5; }
+.card-body h3 { @apply text-lg leading-snug; }
+.card-location { @apply inline-flex items-center gap-1.5 text-sm text-(--color-ink)/60; }
+.card-features { @apply flex flex-wrap gap-3 text-sm text-(--color-ink)/70; }
+.card-features span { @apply inline-flex items-center gap-1.5; }
+.card-features span svg { @apply text-(--color-navy-500); }
+/* Fade-in progresivo de imágenes con lazy-load */
+.img-lazy-fade { @apply h-full w-full bg-(--color-surface-alt) object-cover opacity-0 transition duration-500; }
+.img-lazy-fade.is-loaded { @apply opacity-100; }
+/* Botón flotante quitar de favoritos (grilla) */
+.btn-toggle-fav-card {
+  @apply absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-red-500 shadow-md transition hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400;
+}
+.estado {
+  @apply inline-block w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide;
+}
+.estado.disponible { @apply bg-emerald-500/15 text-emerald-700; }
+.estado.reservado { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.estado.ocupado { @apply bg-black/10 text-(--color-ink)/60; }
+.precios-card { @apply mt-1 flex flex-col gap-0.5; }
+.precio-card { @apply flex items-baseline justify-between; }
+.precio-label { @apply text-xs text-(--color-ink)/50; }
+.precio-valor { @apply font-display text-lg font-bold text-(--color-gold-600); }
+
+/* ════════════════════════════════════════════════════════════
+   ¿POR QUÉ ELEGIRNOS? / CTA
+════════════════════════════════════════════════════════════ */
+.seccion-porque { @apply bg-(--color-surface-alt) py-16; }
+.info-grid { @apply grid grid-cols-1 gap-6 sm:grid-cols-3; }
+.tool-card {
+  @apply rounded-2xl bg-white p-6 text-center shadow-sm border border-black/5 transition hover:shadow-md hover:-translate-y-0.5;
+}
+.tool-card-icon { @apply mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-(--color-navy-600)/10 text-(--color-navy-600); }
+.tool-card h3 { @apply mb-2 text-lg; }
+.tool-card p { @apply text-sm text-(--color-ink)/65; }
+.cta-section {
+  @apply relative overflow-hidden py-16 text-center text-white;
+  background: linear-gradient(135deg, #080f26 0%, #0f1e4a 50%, #1e3177 100%);
+}
+.cta-section::before {
+  content: "";
+  @apply absolute inset-0 pointer-events-none;
+  background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(59,95,192,0.25) 0%, transparent 70%);
+}
+.cta-section h2 { @apply mb-3 text-2xl text-white sm:text-3xl relative z-10; }
+.cta-section p { @apply mb-6 text-white/75 relative z-10; }
+.cta-section .btn-hero { @apply relative z-10; }
+
+/* ════════════════════════════════════════════════════════════
+   MINI HERO (páginas internas)
+════════════════════════════════════════════════════════════ */
+.page-hero {
+  @apply relative px-5 py-14 text-center text-white overflow-hidden;
+  background: linear-gradient(135deg, #080f26 0%, #0f1e4a 50%, #1e3177 100%);
+}
+.page-hero::after {
+  content: "";
+  @apply absolute bottom-0 left-0 right-0 h-1 pointer-events-none;
+  background: linear-gradient(90deg, transparent, #f5a623, transparent);
+}
+.page-hero-badge { @apply mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium; }
+.page-hero h1 { @apply text-3xl text-white sm:text-4xl relative z-10; }
+.page-hero p { @apply mt-2 text-white/75 relative z-10; }
+.propiedades-container { @apply py-8; }
+
+/* ════════════════════════════════════════════════════════════
+   PANEL (admin/asesor) — layout compartido
+════════════════════════════════════════════════════════════ */
+.panel-layout {
+  @apply flex min-h-[calc(100vh-73px)] flex-col md:flex-row;
+  width: 100%;
+}
+.panel-sidebar {
+  @apply w-full shrink-0 p-5 text-white md:w-64;
+  background: linear-gradient(180deg, #080f26 0%, #0f1e4a 100%);
+  position: sticky;
+  top: 73px;
+  height: calc(100vh - 73px);
+  max-height: calc(100vh - 73px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-self: flex-start;
+}
+.sidebar-brand span { @apply text-xs uppercase tracking-wide text-white/50; }
+.sidebar-brand h3 { @apply text-white; }
+.sidebar-user { @apply my-4 flex items-center gap-3; }
+.sidebar-user img { @apply h-10 w-10 rounded-full ring-2 ring-gold-500/40; }
+.sidebar-user-info strong { @apply block text-sm text-white; }
+.sidebar-user-info span { @apply text-xs text-white/50; }
+.sidebar-nav { @apply flex flex-col gap-1; }
+.sidebar-nav a {
+  @apply flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-white/65 transition hover:bg-white/10 hover:text-white;
+}
+.sidebar-nav a.active {
+  @apply text-white font-medium;
+  background: rgba(245,166,35,0.15);
+  border-left: 3px solid #f5a623;
+}
+.nav-icon { @apply h-5 w-5 shrink-0; }
+.panel-main {
+  @apply min-w-0 flex-1 p-6;
+  overflow-x: clip;
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   DETALLE DE INMUEBLE
+════════════════════════════════════════════════════════════ */
+.detalle-page { @apply mx-auto max-w-6xl px-5 py-8; }
+.detalle-back-bar { @apply mb-4; }
+.alerta-detalle {
+  @apply flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium;
+}
+.alerta-detalle.success { @apply border-emerald-200 bg-emerald-50 text-emerald-700; }
+.alerta-detalle.error { @apply border-red-300 bg-red-50 text-red-700; }
+.detalle-hero-section { @apply grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]; }
+.slider-column { @apply flex flex-col gap-3; }
+.main-slider-wrap { @apply relative aspect-[4/3] overflow-hidden rounded-2xl bg-(--color-surface-alt) sm:aspect-[16/10]; }
+.slider-track { @apply flex h-full transition-transform duration-300 ease-out; }
+.slide-item { @apply h-full w-full shrink-0; }
+.slide-item img { @apply h-full w-full object-cover; }
+.slide-counter { @apply absolute right-3 top-3 z-10 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white; }
+.slider-btn {
+  @apply absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-(--color-ink) shadow transition hover:bg-white;
+}
+.prev-btn { @apply left-3; }
+.next-btn { @apply right-3; }
+.slider-dots { @apply absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5; }
+.slider-dot { @apply h-2 w-2 rounded-full bg-white/60 transition; }
+.slider-dot.active { @apply w-5 bg-(--color-gold-500); }
+.thumb-strip { @apply flex items-center gap-2; }
+.thumb-viewport { @apply overflow-hidden; }
+.thumb-list { @apply flex gap-2; }
+.thumb-item { @apply h-16 w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-transparent opacity-60 transition; }
+.thumb-item.active-thumb { @apply border-(--color-gold-500) opacity-100; }
+.thumb-item img { @apply h-full w-full object-cover; }
+.price-card-floating {
+  @apply relative h-fit rounded-2xl border border-black/5 bg-white p-6 shadow-lg shadow-navy-900/8;
+}
+.price-label-small { @apply text-xs uppercase tracking-wide text-(--color-ink)/50; }
+.price-main { @apply mb-3 font-display text-3xl font-bold text-(--color-gold-600); }
+.badge-estado {
+  @apply mr-1.5 inline-block rounded-full px-2.5 py-1 text-xs font-semibold uppercase;
+}
+.badge-estado.disponible { @apply bg-(--color-navy-500)/15 text-(--color-navy-700); }
+.badge-estado.reservado { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.badge-estado.ocupado { @apply bg-black/10 text-(--color-ink)/60; }
+.badge-modalidad {
+  @apply mr-1.5 inline-block rounded-full border border-(--color-navy-500)/30 px-2.5 py-1 text-xs font-semibold text-(--color-navy-700);
+}
+.codigo-inmueble-container {
+  @apply mb-4 flex items-center gap-1.5 rounded-lg bg-(--color-surface) px-3 py-2 text-xs text-(--color-ink)/60;
+}
+.reserva-cta-wrap { @apply mt-4; }
+.reserva-cta-divider { @apply relative mb-4 text-center text-xs uppercase tracking-wide text-(--color-ink)/30; }
+.reserva-cta-divider::before,
+.reserva-cta-divider::after {
+  content: ""; @apply absolute top-1/2 h-px w-[42%] bg-black/10;
+}
+.reserva-cta-divider::before { @apply left-0; }
+.reserva-cta-divider::after { @apply right-0; }
+.reserva-cta-hint { @apply mt-2 text-center text-xs text-(--color-ink)/50; }
+.reserva-no-disponible {
+  @apply mt-4 flex items-center justify-center gap-2 rounded-xl bg-black/5 px-4 py-3 text-center text-sm text-(--color-ink)/60;
+}
+.detalle-badges { @apply mb-4 flex flex-wrap items-center gap-1.5; }
+.modal-box-close { @apply flex h-8 w-8 items-center justify-center rounded-full text-(--color-ink)/50 hover:bg-(--color-surface-alt); }
+.main-content-grid { @apply mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]; }
+.section-card { @apply mb-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm; }
+.detalle-titulo-principal { @apply mb-2 text-2xl sm:text-3xl; }
+.detalle-ubicacion-text { @apply mb-6 flex items-center gap-1.5 text-sm text-(--color-ink)/60; }
+.section-card-title { @apply mb-4 flex items-center gap-2 text-lg; }
+.section-card p { @apply leading-relaxed text-(--color-ink)/75; }
+.amenities-grid { @apply mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3; }
+.amenity-item { @apply flex items-center gap-3 rounded-xl bg-(--color-surface) p-3; }
+.amenity-icon { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--color-navy-600)/10 text-(--color-navy-700); }
+.amenity-label { @apply text-xs leading-tight text-(--color-ink)/70; }
+.map-container { @apply relative overflow-hidden rounded-xl; }
+.map-container iframe { @apply h-72 w-full border-0; }
+.map-address-card { @apply absolute bottom-3 left-3 max-w-[70%] rounded-xl bg-white/95 p-3 shadow-md backdrop-blur; }
+.addr-main { @apply text-sm font-semibold; }
+.addr-sub { @apply text-xs text-(--color-ink)/60; }
+.right-column { @apply lg:sticky lg:top-24 lg:h-fit; }
+.contact-form-card { @apply rounded-2xl border border-black/5 bg-white p-6 shadow-sm; }
+.contact-form-card h2 { @apply text-xl; }
+.form-subtitle { @apply mb-5 mt-1 text-sm text-(--color-ink)/60; }
+
+/* ════════════════════════════════════════════════════════════
+   AUTENTICACIÓN (login / registro / recuperar)
+════════════════════════════════════════════════════════════ */
+.auth-shell {
+  @apply flex min-h-[calc(100vh-73px)] items-center justify-center px-5 py-14;
+  background: linear-gradient(135deg, #080f26 0%, #0f1e4a 50%, #1e3177 100%);
+}
+.auth-card {
+  @apply w-full max-w-md rounded-2xl border border-white/10 bg-white p-8 shadow-2xl;
+}
+.auth-card--wide { @apply max-w-2xl; }
+.auth-brand { @apply mb-6 flex items-center justify-center gap-2.5 font-display text-lg font-bold text-(--color-navy-900); }
+.auth-card h1 { @apply mb-1.5 text-2xl text-(--color-navy-900); }
+.auth-subtitle { @apply mb-6 text-sm text-(--color-ink)/60; }
+.auth-field { @apply mb-4; }
+.auth-field label { @apply mb-1.5 block text-sm font-medium text-(--color-navy-900); }
+.auth-field input,
+.auth-field select {
+  @apply w-full rounded-lg border border-black/10 px-3.5 py-2.5 text-sm outline-none focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20 bg-white;
+}
+.auth-row { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+.auth-submit {
+  @apply mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-(--color-gold-500) px-5 py-3 text-sm font-semibold text-(--color-navy-900) transition hover:bg-(--color-gold-400) shadow-md shadow-gold-500/25;
+}
+.auth-footer-link { @apply mt-6 text-center text-sm text-(--color-ink)/60; }
+.auth-footer-link a { @apply font-semibold text-(--color-navy-700) hover:text-(--color-gold-600); }
+.auth-alert {
+  @apply mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium;
+}
+.auth-alert.success { @apply border-emerald-200 bg-emerald-50 text-emerald-700; }
+.auth-alert.error { @apply border-red-300 bg-red-50 text-red-700; }
+
+/* ════════════════════════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════════════════════════ */
+footer {
+  @apply border-t border-white/5 pt-14 text-white/70;
+  background: linear-gradient(180deg, #080f26 0%, #050d1f 100%);
+}
+.footer-content { @apply grid grid-cols-1 gap-8 pb-10 sm:grid-cols-2 lg:grid-cols-4; }
+.footer-brand .logo { @apply mb-3 text-white; }
+.footer-brand p { @apply text-sm leading-relaxed text-white/60; }
+.footer-content h4 { @apply mb-3 text-sm font-semibold uppercase tracking-wide text-(--color-gold-400); }
+.footer-content p { @apply mb-1.5 text-sm text-white/60; }
+.footer-bottom {
+  @apply border-t border-white/10 py-5 text-center text-xs text-white/40;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PANEL / DASHBOARD (cliente, asesor, admin) — capa funcional
+════════════════════════════════════════════════════════════ */
+
+/* ── Genéricos ── */
+.hidden { display: none !important; }
+.back-link { @apply mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-navy-700) hover:text-(--color-gold-600); }
+.flash-msg { @apply mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium; }
+.alert { @apply mb-5 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium; }
+.alert.success,
+.flash-msg.success { @apply border-emerald-200 bg-emerald-50 text-emerald-700; }
+.alert.error,
+.flash-msg.error { @apply border-red-300 bg-red-50 text-red-700; }
+.alert.info,
+.flash-msg.info { @apply border-black/10 bg-(--color-surface-alt) text-(--color-ink)/70; }
+.alert.warning,
+.flash-msg.warning { @apply border-(--color-gold-500)/40 bg-(--color-gold-500)/10 text-(--color-gold-600); }
+.subtitle { @apply text-sm text-(--color-ink)/60; }
+.text-opcional { @apply font-normal text-(--color-ink)/40; }
+.req { @apply text-red-500; }
+.field-note { @apply mt-1 block text-xs text-(--color-ink)/50; }
+.field-note-mt { @apply mt-2; }
+.error-text { @apply mt-1 block text-xs font-medium text-red-600; }
+
+/* ── Badges de estado (compartidos) ── */
+.badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold; }
+.badge-estado {
+  @apply inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+.badge-confirmada { @apply bg-emerald-100 text-emerald-700; }
+.badge-cancelada { @apply bg-black/10 text-(--color-ink)/60; }
+.badge-pendiente-pago { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.badge-pendiente-conf { @apply bg-(--color-navy-500)/15 text-(--color-navy-700); }
+.badge-rechazada { @apply bg-red-100 text-red-700; }
+.badge-expirada { @apply bg-black/10 text-(--color-ink)/50; }
+.accent-blue {
+  @apply rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+.accent-blue { @apply bg-(--color-navy-500)/15 text-(--color-navy-700); }
+
+/* ── Botones de panel (variantes) ── */
+.btn-panel-primary { @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-(--color-navy-700) px-4 py-2 text-sm font-semibold text-white transition hover:bg-(--color-navy-800); }
+.btn-panel-edit { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-sm font-medium transition hover:bg-(--color-surface-alt); }
+.btn-panel-cancelar,
+.btn-modal-cancel { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-black/10 px-4 py-2 text-sm font-medium transition hover:bg-(--color-surface-alt); }
+.btn-logout,
+.btn-logout-sm { @apply inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50; }
+
+/* ── Perfil / dashboard cliente ── */
+.perfil-dashboard { @apply grid grid-cols-1 gap-6 py-8 lg:grid-cols-[260px_1fr]; }
+.perfil-sidebar { @apply h-fit rounded-2xl border border-black/5 bg-white p-5 shadow-sm; }
+.perfil-avatar { @apply mb-4 flex flex-col items-center gap-3 text-center; }
+.avatar-wrapper { @apply relative h-24 w-24; }
+.avatar-wrapper img { @apply h-24 w-24 rounded-full object-cover; }
+.avatar-change-btn { @apply absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-(--color-gold-500) text-(--color-navy-900) shadow; }
+.avatar-img-preview { @apply h-24 w-24 rounded-full object-cover; }
+.user-role { @apply rounded-full bg-(--color-navy-500)/10 px-2.5 py-1 text-xs font-medium text-(--color-navy-700); }
+.perfil-menu { @apply mt-4 flex flex-col gap-1; }
+.perfil-menu a { @apply flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-(--color-ink)/70 transition hover:bg-(--color-surface-alt) hover:text-(--color-navy-900); }
+.perfil-menu a.active { @apply bg-(--color-surface-alt) font-semibold text-(--color-navy-900); }
+.perfil-stats { @apply mt-4 grid grid-cols-3 gap-2 border-t border-black/5 pt-4 text-center; }
+.perfil-content { @apply space-y-6; }
+.section-perfil,
+.panel-card { @apply rounded-2xl border border-black/5 bg-white p-6 shadow-sm; }
+.panel-card + .panel-card { @apply mt-6; }
+.panel-card-header { @apply mb-4 border-b border-black/5 pb-3; }
+/* Variante con acción a la derecha del título (botón de alta) */
+.panel-card-header--between { @apply flex flex-wrap items-center justify-between gap-3; }
+.panel-card-header h2 { @apply flex items-center gap-2 text-lg; }
+.panel-card-header h2 svg { @apply text-(--color-navy-500); }
+.perfil-details { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+.perfil-details-mb { @apply mb-4; }
+.detail-item,
+.rinfo-item { @apply flex flex-col gap-0.5; }
+.rinfo-item--full { @apply sm:col-span-2; }
+.rinfo-label { @apply text-xs uppercase tracking-wide text-(--color-ink)/50; }
+.rinfo-value { @apply text-sm font-medium text-(--color-ink); }
+.rinfo-monto { @apply font-display text-lg font-bold text-(--color-gold-600); }
+.details-header { @apply mb-4 flex flex-wrap items-center justify-between gap-3; }
+.details-header h3 { @apply flex items-center gap-2; }
+.details-header h3 svg { @apply text-(--color-navy-500); }
+.perfil-subtitle { @apply mb-3 mt-6 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-(--color-ink)/50; }
+.card-meta { @apply space-y-1 text-sm; }
+.card-meta div { @apply flex items-baseline justify-between gap-3; }
+.card-meta dt { @apply text-(--color-ink)/50; }
+.card-meta dd { @apply font-medium text-(--color-ink); }
+.perfil-actions,
+.form-actions-row,
+.modal-actions { @apply mt-5 flex flex-wrap gap-3; }
+.field-lock-badge,
+.lock-badge-sm { @apply inline-flex items-center gap-1 rounded-full bg-black/5 px-2 py-0.5 text-xs text-(--color-ink)/50; }
+.input-readonly { @apply cursor-not-allowed bg-(--color-surface-alt)/60 text-(--color-ink)/50; }
+.password-input-wrapper { @apply relative; }
+.password-input-wrapper input { @apply pr-11; }
+.toggle-password {
+  @apply absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-(--color-ink)/40 transition hover:text-(--color-navy-600) focus-visible:outline-none focus-visible:text-(--color-navy-600);
+}
+.pw-eye-off { @apply hidden; }
+.password-input-wrapper.is-visible .pw-eye { @apply hidden; }
+.password-input-wrapper.is-visible .pw-eye-off { @apply block; }
+.password-rules { @apply mt-2 space-y-1 text-xs text-(--color-ink)/55; }
+.password-rules li { @apply flex items-center gap-2; }
+.rule-dot { @apply h-1.5 w-1.5 shrink-0 rounded-full bg-current; }
+.password-rules li.valid { @apply text-emerald-600; }
+.password-rules li.invalid { @apply text-red-500; }
+.password-module-container { @apply mx-auto max-w-lg py-10; }
+.form-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+.form-group.full { @apply sm:col-span-2; }
+.form-submit-mt { @apply mt-4; }
+.form-group { @apply mb-4; }
+.form-group label { @apply mb-1.5 block text-sm font-medium; }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  @apply w-full rounded-lg border border-black/10 px-3.5 py-2.5 text-sm outline-none focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
+}
+.form-mt-8 { @apply mt-8; }
+.flex-row-center-gap10 { @apply flex flex-wrap items-center gap-2.5; }
+
+/* ── Reservas (cliente) ── */
+.stat-card,
+.stat-card-panel { @apply rounded-xl border border-black/5 bg-white p-4 text-center shadow-sm; }
+.stat-icon { @apply mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-(--color-navy-600)/10 text-(--color-navy-600); }
+.stat-icon--success { @apply bg-emerald-100 text-emerald-600; }
+.stat-icon--gold { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.stat-icon--danger { @apply bg-red-100 text-red-600; }
+.stat-value { @apply block font-display text-2xl font-bold text-(--color-navy-700); }
+.stat-label { @apply block text-xs text-(--color-ink)/55; }
+.stat-cards { @apply grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6; }
+.empty-panel { @apply col-span-full flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white px-6 py-14 text-center text-(--color-ink)/60; }
+.empty-icon { @apply mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-navy-500); }
+.empty-panel p { @apply max-w-sm text-sm text-(--color-ink)/55; }
+.code-badge { @apply font-mono text-xs text-(--color-ink)/50; }
+
+/* ── Detalle de reserva (cliente + admin) ── */
+.left-column { @apply space-y-6; }
+.rdetalle-info-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+.reservas-backbar { @apply container pt-6; }
+.btn-back-reserva { @apply inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-navy-700) hover:text-(--color-gold-600); }
+.reservas-container { @apply container py-8; }
+.rdetalle-header { @apply mb-6 flex flex-wrap items-center justify-between gap-4; }
+.rdetalle-codigo { @apply block font-mono text-xs uppercase tracking-wide text-(--color-ink)/45; }
+.rdetalle-meta { @apply mt-1 flex items-center gap-1.5 text-sm text-(--color-ink)/60; }
+.rdetalle-grid,
+.admin-rdetalle-grid { @apply grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]; }
+.rdetalle-left,
+.rdetalle-right,
+.admin-rdetalle-left,
+.admin-rdetalle-right { @apply space-y-6; }
+.rdetalle-card { @apply rounded-2xl border border-black/5 bg-white p-6 shadow-sm; }
+.rdetalle-card-title { @apply mb-4 flex items-center gap-2 text-lg; }
+.rdetalle-card--upload { @apply border-(--color-gold-500)/30; }
+.rdetalle-hint { @apply mb-4; }
+.rdetalle-rechazo-alert { @apply mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700; }
+.rdetalle-cancelar-wrap { @apply mt-2; }
+.rinfo-code { @apply font-mono; }
+.reserva-badge-lg { @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold; }
+.danger-zone { @apply border-red-200 bg-red-50/50; }
+.danger-zone-title { @apply mb-3 flex items-center gap-2 text-sm font-semibold text-red-700; }
+.btn-panel-success { @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700; }
+.btn-panel-danger { @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700; }
+.btn-cancelar-reserva { @apply inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100; }
+.btn-upload-submit { @apply inline-flex items-center gap-1.5 rounded-lg bg-(--color-navy-700) px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-(--color-navy-800); }
+.btn-text { @apply inline-flex items-center gap-1 text-sm font-semibold text-(--color-navy-700) hover:text-(--color-gold-600); }
+.doc-cargado { @apply mb-4 flex flex-wrap items-center gap-2 text-sm text-emerald-700; }
+.td-nowrap { @apply whitespace-nowrap; }
+.stat-value--sm { @apply text-xl; }
+
+/* ── Comprobante de pago ── */
+.pagos-list { @apply flex flex-col gap-3; }
+.pago-item { @apply rounded-xl border border-black/5 bg-(--color-surface) p-4; }
+.pago-header { @apply mb-2 flex items-center justify-between gap-2; }
+.pago-estado-badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold; }
+.pago-fecha { @apply text-xs text-(--color-ink)/45; }
+.pago-detalle { @apply flex flex-wrap gap-x-4 gap-y-1 text-sm text-(--color-ink)/70; }
+.pago-detalle span { @apply inline-flex items-center gap-1; }
+.pago-rechazo { @apply mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700; }
+
+/* ── Historial (timeline) ── */
+.historial-timeline { @apply relative flex flex-col gap-5; }
+.historial-item { @apply relative flex gap-3 pl-5; }
+.historial-item::before {
+  content: "";
+  @apply absolute bottom-[-20px] left-[3px] top-5 w-px bg-black/10;
+}
+.historial-item:last-child::before { @apply hidden; }
+.historial-dot { @apply absolute left-0 top-1.5 h-2 w-2 rounded-full bg-(--color-navy-500) ring-4 ring-(--color-navy-500)/15; }
+.historial-content { @apply flex-1; }
+.historial-estados { @apply flex items-center gap-1.5 text-sm font-semibold; }
+.h-estado-de { @apply text-(--color-ink)/45; }
+.h-arrow { @apply text-(--color-ink)/30; }
+.h-estado-a { @apply text-(--color-navy-800); }
+.historial-comentario { @apply mt-0.5 text-sm text-(--color-ink)/70; }
+.historial-meta { @apply mt-1 flex items-center gap-1 text-xs text-(--color-ink)/45; }
+.audit-list { @apply flex flex-col gap-3; }
+.audit-list li { @apply flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-black/5 pb-3 text-sm last:border-0 last:pb-0; }
+.audit-date { @apply text-xs text-(--color-ink)/45; }
+.audit-action { @apply text-(--color-navy-800); }
+
+/* ── Subida de archivos (dropzone) ── */
+.input-file-custom { @apply w-full rounded-lg border border-dashed border-black/15 px-3.5 py-2.5 text-sm; }
+
+/* ── Notificaciones ── */
+.notif-page { @apply container py-8; }
+.notif-header { @apply mb-6 flex flex-wrap items-center justify-between gap-3; }
+.notif-subtitle { @apply text-sm text-(--color-ink)/55; }
+.btn-marcar-todas { @apply inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3.5 py-2 text-sm font-medium transition hover:bg-(--color-surface-alt); }
+.notif-empty { @apply flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white px-6 py-16 text-center; }
+.notif-empty-icon { @apply mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-navy-500); }
+.notif-empty p { @apply text-sm text-(--color-ink)/55; }
+.notif-list { @apply flex flex-col gap-3; }
+.notif-card { @apply flex items-start gap-3 rounded-2xl border border-black/5 bg-white p-4 shadow-sm; }
+.notif-card.no-leida { @apply border-(--color-navy-500)/25 bg-(--color-navy-500)/[0.03]; }
+.notif-icon { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-ink)/60; }
+.notif-icon.notif-tipo-success { @apply bg-emerald-100 text-emerald-600; }
+.notif-icon.notif-tipo-warning { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.notif-icon.notif-tipo-error { @apply bg-red-100 text-red-600; }
+.notif-body { @apply flex-1; }
+.notif-body h4 { @apply text-sm; }
+.notif-body p { @apply mt-0.5 text-sm text-(--color-ink)/65; }
+.notif-time { @apply mt-1.5 inline-flex items-center gap-1 text-xs text-(--color-ink)/40; }
+.notif-mark { @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--color-ink)/40 transition hover:bg-(--color-surface-alt) hover:text-(--color-navy-700); }
+.nav-badge { @apply ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-(--color-gold-500) px-1.5 text-[11px] font-bold text-(--color-navy-900); }
+
+/* ── Chat (mensajes: cliente / asesor / admin) ── */
+.chat-section { @apply py-8; }
+.mensajes-layout { @apply grid grid-cols-1 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm md:grid-cols-[320px_1fr]; }
+.mensajes-layout--tall { @apply h-[calc(100vh-220px)] min-h-[520px]; }
+.mensajes-lista { @apply flex flex-col overflow-hidden border-black/5 md:border-r; }
+.mensajes-lista-header { @apply flex flex-col gap-3 border-b border-black/5 p-4; }
+.mensajes-lista-header h2 { @apply text-base; }
+.search-bar { @apply w-full rounded-lg border border-black/10 bg-(--color-surface) px-3 py-2 text-sm outline-none focus:border-(--color-navy-500); }
+.mensajes-lista-scroll { @apply flex-1 overflow-y-auto; }
+.chat-item { @apply flex w-full items-center gap-3 border-b border-black/5 px-4 py-3 text-left transition hover:bg-(--color-surface); }
+.chat-item.active { @apply bg-(--color-surface-alt); }
+.chat-item-info { @apply min-w-0 flex-1; }
+.chat-item-top { @apply flex items-center justify-between gap-2; }
+.chat-item-top strong { @apply truncate text-sm; }
+.chat-time { @apply shrink-0 text-xs text-(--color-ink)/40; }
+.chat-item-preview { @apply block truncate text-xs text-(--color-ink)/55; }
+.chat-unread-badge { @apply flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-(--color-gold-500) px-1.5 text-[11px] font-bold text-(--color-navy-900); }
+.chat-window { @apply flex flex-col overflow-hidden; }
+.chat-window-empty { @apply flex flex-1 items-center justify-center p-8 text-center text-sm text-(--color-ink)/45; }
+.chat-header-panel { @apply flex items-center gap-3 border-b border-black/5 p-4; }
+.chat-back-btn { @apply flex h-8 w-8 items-center justify-center rounded-full text-(--color-ink)/60 hover:bg-(--color-surface-alt) md:hidden; }
+.chat-header-info { @apply flex flex-1 flex-col; }
+.chat-header-info strong { @apply text-sm; }
+.chat-header-info span { @apply text-xs text-(--color-ink)/50; }
+.chat-header-inmueble { @apply flex flex-col rounded-lg bg-(--color-surface) px-3 py-1.5 text-right text-xs; }
+.chat-header-inmueble strong { @apply flex items-center justify-end gap-1 text-(--color-navy-700); }
+.chat-messages { @apply flex flex-1 flex-col gap-1 overflow-y-auto p-4; }
+.chat-loadmore { @apply mb-2 flex justify-center; }
+.btn-load-more { @apply inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium transition hover:bg-(--color-surface-alt); }
+.chat-date-sep { @apply my-3 text-center text-xs text-(--color-ink)/40; }
+.msg-group { @apply mb-2 flex max-w-[75%] flex-col gap-1; }
+.msg-group.outgoing { @apply ml-auto items-end; }
+.msg-group.incoming { @apply mr-auto items-start; }
+.msg-sender-label { @apply text-[11px] text-(--color-ink)/40; }
+.msg-bubble { @apply rounded-2xl px-4 py-2.5 text-sm; }
+.msg-group.outgoing .msg-bubble { @apply rounded-br-sm bg-(--color-navy-700) text-white; }
+.msg-group.incoming .msg-bubble { @apply rounded-bl-sm bg-(--color-surface-alt) text-(--color-ink); }
+.msg-attachment img { @apply max-w-[220px] rounded-xl; }
+.msg-time { @apply flex items-center gap-1 text-[11px] text-(--color-ink)/35; }
+.msg-status { @apply inline-flex; }
+.chat-input-area { @apply flex items-center gap-2 border-t border-black/5 p-3; }
+.chat-attach-btn { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-(--color-ink)/50 hover:bg-(--color-surface-alt); }
+.chat-input-area textarea { @apply max-h-24 flex-1 resize-none rounded-xl border border-black/10 bg-(--color-surface) px-4 py-2 text-sm outline-none focus:border-(--color-navy-500); }
+.chat-send-btn { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--color-navy-700) text-white transition hover:bg-(--color-navy-800); }
+
+/* Móvil: una sola vista a la vez (lista o chat activo), como app nativa */
+@media (max-width: 767px) {
+  .mensajes-layout:not(.has-active-chat) .chat-window { @apply hidden; }
+  .mensajes-layout.has-active-chat .mensajes-lista { @apply hidden; }
+}
+
+/* ── Realce de tablas (búsqueda / orden / paginación / CSV) ── */
+.tbl-toolbar { @apply mb-3 flex flex-wrap items-center justify-between gap-3; }
+.tbl-search { @apply flex flex-1 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-(--color-ink)/50 focus-within:border-(--color-navy-500) focus-within:ring-2 focus-within:ring-(--color-navy-500)/20 sm:max-w-xs; }
+.tbl-search input { @apply w-full border-0 bg-transparent text-(--color-ink) outline-none placeholder:text-(--color-ink)/40; }
+.tbl-tools { @apply flex items-center gap-2; }
+.tbl-btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm font-medium text-(--color-ink)/70 transition hover:bg-(--color-surface-alt) disabled:cursor-not-allowed disabled:opacity-40; }
+.tbl-size { @apply rounded-lg border border-black/10 bg-white px-2.5 py-2 text-sm text-(--color-ink)/70 outline-none focus:border-(--color-navy-500); }
+.tbl-pagination { @apply mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-(--color-ink)/55; }
+.tbl-pager { @apply flex items-center gap-2; }
+.tbl-pageinfo { @apply min-w-[8rem] rounded-lg bg-(--color-surface-alt) px-3 py-1.5 text-center text-xs font-semibold text-(--color-navy-700); }
+.th-sortable { @apply cursor-pointer select-none whitespace-nowrap; }
+.th-sortable:hover { @apply bg-white/10; }
+.th-sortable::after {
+  content: ""; @apply ml-1.5 inline-block align-middle opacity-30;
+  border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid currentColor;
+}
+.th-sortable.th-asc::after { @apply opacity-100; }
+.th-sortable.th-desc::after { @apply opacity-100; transform: rotate(180deg); }
+
+/* ── Tablas de administración ── */
+.table-responsive {
+  @apply rounded-2xl border border-black/5 bg-white shadow-sm;
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+.panel-table { @apply w-full min-w-[600px] text-left text-sm; }
+.panel-table thead {
+  @apply text-xs uppercase tracking-wide text-white;
+  background: linear-gradient(135deg, #0f1e4a, #1e3177);
+}
+.panel-table th,
+.panel-table td { @apply px-4 py-3; }
+.panel-table tbody tr { @apply border-t border-black/5 transition hover:bg-(--color-surface); }
+.td-title { @apply block font-semibold; }
+.td-subtitle { @apply block text-xs text-(--color-ink)/50; }
+.td-muted { @apply text-(--color-ink)/30; }
+.td-email,
+.td-phone { @apply text-(--color-ink)/70; }
+.td-price { @apply font-display font-semibold text-(--color-gold-600); }
+.td-date { @apply text-xs text-(--color-ink)/55; }
+.td-id { @apply font-mono text-xs text-(--color-ink)/40; }
+.td-capitalize { @apply capitalize; }
+.td-center-text { @apply text-center; }
+.table-img { @apply h-12 w-12 rounded-lg object-cover; }
+.row-actions { @apply flex flex-nowrap items-center gap-2; }
+.role-select-inline {
+  @apply w-[110px] appearance-none rounded-xl border border-black/10 bg-white px-3 py-1.5 pr-8 text-xs font-semibold text-(--color-navy-700) shadow-sm outline-none transition hover:border-(--color-navy-300) focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+}
+.panel-pagination { @apply flex items-center justify-center gap-2 p-4; }
+.panel-topbar { @apply mb-6 flex flex-wrap items-center justify-between gap-3; }
+/* Formulario de edición de inmueble */
+.panel-form-card { @apply mx-auto max-w-4xl; }
+.estado-auto { @apply flex flex-col gap-1.5 rounded-lg border border-black/10 bg-(--color-surface) px-3.5 py-2.5; }
+.estado-auto-hint { @apply inline-flex items-center gap-1 text-xs text-(--color-ink)/50; }
+.gallery-section { @apply mt-8 border-t border-black/5 pt-8; }
+.gallery-title { @apply mb-4 text-base font-semibold text-(--color-navy-900); }
+.img-gallery { @apply mb-6 grid gap-4; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.img-gallery-item { @apply relative overflow-hidden rounded-xl border border-black/10 bg-white; }
+.img-gallery-item--principal { @apply border-(--color-navy-500) ring-2 ring-(--color-navy-500)/20; }
+.img-principal-tag { @apply absolute inset-x-0 top-0 z-10 bg-(--color-navy-600) py-1 text-center text-[0.7rem] font-bold uppercase tracking-wide text-white; }
+.img-thumb { @apply h-28 w-full object-cover; }
+.img-gallery-actions { @apply flex border-t border-black/5 bg-(--color-surface); }
+.img-action-btn { @apply flex flex-1 items-center justify-center py-2 text-(--color-ink)/50 transition hover:bg-black/5; }
+.img-action-btn--star { @apply hover:text-(--color-gold-600); }
+.img-action-btn--danger { @apply hover:text-red-600; }
+/* Herramienta de subida de imagen */
+.panel-link { @apply text-sm font-semibold text-(--color-navy-700) hover:text-(--color-gold-600); }
+
+/* ── Reportes ── */
+.table-scroll { @apply overflow-x-auto; }
+
+/* ── Estado (páginas de confirmación) ── */
+
+/* ── Página de error (404) ── */
+.error-page {
+  @apply relative flex min-h-[70vh] items-center justify-center overflow-hidden px-6 py-16 text-center text-white;
+  background: linear-gradient(135deg, #080f26 0%, #0f1e4a 50%, #1e3177 100%);
+}
+.error-glow { @apply pointer-events-none absolute rounded-full; }
+.error-glow--gold { @apply -right-20 -top-20 h-72 w-72 bg-(--color-gold-500)/10 blur-2xl; }
+.error-glow--white { @apply -bottom-16 -left-16 h-52 w-52 bg-white/5 blur-2xl; }
+.error-content { @apply relative z-10 max-w-lg; }
+.error-code {
+  @apply font-display text-8xl font-black leading-none text-transparent sm:text-9xl;
+  background: linear-gradient(135deg, #f5a623, #fad080);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.error-title { @apply mt-4 text-2xl text-white sm:text-3xl; }
+.error-page-text { @apply mx-auto mb-9 mt-3 max-w-md text-base leading-relaxed text-white/70; }
+.error-actions { @apply flex flex-wrap justify-center gap-4; }
+
+/* ── Modal genérico (usado en admin/asesor) ── */
+.modal-overlay { @apply fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 p-4; }
+.modal-overlay.flex,
+.modal-overlay.is-open { @apply flex; }
+.modal-box { @apply max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl; }
+.modal-box--lg { @apply max-w-2xl; }
+.modal-box-header { @apply mb-4 flex items-center justify-between gap-3; }
+.modal-box-header h2 { @apply text-lg; }
+/* Botones de acción tipo icono (filas de tabla) */
+.btn-icon { @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 text-(--color-ink)/55 transition hover:bg-(--color-surface-alt) hover:text-(--color-navy-700); }
+.btn-icon--info { @apply border-sky-200 bg-sky-50 text-sky-600 hover:border-sky-300 hover:bg-sky-100 hover:text-sky-700; }
+.btn-icon--edit { @apply border-violet-200 bg-violet-50 text-violet-600 hover:border-violet-300 hover:bg-violet-100 hover:text-violet-700; }
+.btn-icon--danger { @apply border-red-200 bg-red-50 text-red-600 hover:border-red-300 hover:bg-red-100 hover:text-red-700; }
+.btn-icon--success { @apply border-emerald-200 bg-emerald-50 text-emerald-600 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-700; }
+.btn-icon--warning { @apply border-(--color-gold-500)/40 bg-(--color-gold-500)/10 text-(--color-gold-600) hover:bg-(--color-gold-500)/20; }
+/* Badges de rol (admin/asesor/cliente) */
+.badge-rol-admin { @apply bg-red-100 text-red-700; }
+.badge-rol-asesor { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.badge-rol-cliente { @apply bg-(--color-navy-500)/15 text-(--color-navy-700); }
+
+/* ── Citas (admin / asesor / franjas) ── */
+.admin-citas-asignar-form { @apply flex items-center gap-2; }
+.admin-citas-asignar-form select {
+  @apply w-full rounded-lg border border-black/10 bg-(--color-surface) px-3 py-1.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
+}
+.franjas-tabla td,
+.franjas-tabla th { @apply align-middle; }
+.franjas-fila-inputs { @apply flex flex-wrap items-center gap-2; }
+.franjas-fila-inputs input[type='time'] {
+  @apply rounded-lg border border-black/10 bg-(--color-surface) px-3 py-1.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
+}
+.franjas-fila-inputs input[type='number'] {
+  @apply w-20 rounded-lg border border-black/10 bg-(--color-surface) px-3 py-1.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
+}
+.franjas-toggle { @apply inline-flex items-center gap-2 text-sm; }
+.cita-historial-list { @apply flex flex-col gap-3; }
+
+/* ── Listado «Mis reservas» (hero + grid de tarjetas) ── */
+.reservas-page { @apply pb-16; }
+.reservas-hero {
+  @apply relative overflow-hidden px-5 py-14 text-center text-white;
+  background: linear-gradient(135deg, #080f26 0%, #0f1e4a 50%, #1e3177 100%);
+}
+.reservas-hero-inner { @apply relative z-10 mx-auto max-w-2xl; }
+.reservas-hero-badge { @apply mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium; }
+.reservas-hero h1 { @apply text-3xl text-white sm:text-4xl; }
+.reservas-hero p { @apply mt-2 text-white/75; }
+.reservas-info-banner { @apply mb-6 flex items-start gap-3 rounded-2xl border border-(--color-gold-500)/30 bg-(--color-gold-500)/10 p-4 text-sm text-(--color-ink)/80; }
+.reservas-info-icon { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--color-gold-500)/20 text-(--color-gold-600); }
+.reservas-stats { @apply mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3; }
+.reservas-stat-card { @apply rounded-2xl border border-black/5 bg-white p-5 text-center shadow-sm; }
+.rsc-icon { @apply mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-(--color-navy-500)/10 text-(--color-navy-600); }
+.rsc-value { @apply font-display text-2xl font-bold text-(--color-navy-900); }
+.rsc-label { @apply text-xs text-(--color-ink)/55; }
+.reservas-empty { @apply flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white px-6 py-16 text-center text-(--color-ink)/60; }
+.reservas-empty-icon { @apply mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-navy-500); }
+.reservas-empty h2 { @apply text-lg; }
+.reservas-empty p { @apply mt-1 text-sm text-(--color-ink)/55; }
+.reservas-grid { @apply grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3; }
+.reserva-card { @apply flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg; }
+.reserva-card-img { @apply h-36 w-full object-cover; }
+.reserva-card-body { @apply flex flex-1 flex-col gap-1.5 p-5; }
+.reserva-badge { @apply mb-1 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold; }
+.reserva-codigo { @apply font-mono text-xs text-(--color-ink)/45; }
+.reserva-inmueble-titulo { @apply text-base leading-snug; }
+.reserva-inmueble-meta { @apply flex items-center gap-1 text-xs text-(--color-ink)/55; }
+.reserva-monto { @apply text-lg text-(--color-navy-800); }
+.reserva-countdown { @apply mt-1 inline-flex w-fit items-center gap-1.5 rounded-lg bg-(--color-gold-500)/10 px-2.5 py-1 text-xs font-semibold text-(--color-gold-600); }
+.countdown-icon { @apply flex; }
+.countdown-inline { @apply inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-gold-600); }
+.reserva-fecha { @apply mt-auto pt-2 text-xs text-(--color-ink)/45; }
+.reserva-card-footer { @apply flex gap-2 border-t border-black/5 p-4; }
+.btn-reservas-outline { @apply flex-1 rounded-lg border border-black/10 px-3 py-2 text-center text-sm font-semibold transition hover:bg-(--color-surface-alt); }
+.btn-reservas-primary { @apply inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-(--color-navy-700) px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-(--color-navy-800); }
+
+/* ── Modal «Iniciar reserva» / «Agendar visita» (inmueble) ── */
+.modal-reserva-box { @apply max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl; }
+.modal-reserva-header { @apply flex items-center justify-between gap-3 border-b border-black/5 p-5; }
+.modal-reserva-header h2 { @apply flex items-center gap-2 text-lg; }
+.modal-reserva-body { @apply p-5; }
+.modal-inmueble-info { @apply mb-5 flex items-center gap-3 rounded-xl bg-(--color-surface) p-3; }
+.modal-inmueble-info img { @apply h-14 w-14 shrink-0 rounded-lg object-cover; }
+.modal-inmueble-info div { @apply flex flex-col gap-0.5 text-sm; }
+.modal-inmueble-info span { @apply flex items-center gap-1 text-xs text-(--color-ink)/55; }
+.modal-precio { @apply font-semibold text-(--color-navy-800); }
+.modal-pasos { @apply mb-5 flex flex-col gap-2; }
+.modal-paso { @apply flex items-center gap-2.5 text-sm text-(--color-ink)/70; }
+.paso-num { @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-(--color-navy-500)/10 text-xs font-bold text-(--color-navy-700); }
+.modal-field { @apply mb-4; }
+.modal-field label { @apply mb-1.5 block text-sm font-medium; }
+.modal-field textarea { @apply w-full rounded-lg border border-black/10 bg-(--color-surface) px-3.5 py-2.5 text-sm outline-none focus:border-(--color-navy-500); }
+.modal-monto-fijo { @apply text-lg font-semibold text-(--color-navy-800); }
+.modal-modalidad-opciones { @apply flex flex-col gap-2; }
+.modal-modalidad-opcion { @apply flex cursor-pointer items-center gap-2 rounded-lg border border-black/10 px-3.5 py-2.5 text-sm transition has-[:checked]:border-(--color-navy-500) has-[:checked]:bg-(--color-navy-500)/5; }
+.modal-terminos { @apply mb-5 flex items-start gap-2.5 text-xs text-(--color-ink)/60; }
+.text-opcional-modal { @apply font-normal text-(--color-ink)/40; }
+.btn-confirmar-reserva { @apply inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-(--color-navy-700) px-4 py-3 text-sm font-semibold text-white transition hover:bg-(--color-navy-800); }
+
+/* ── Botón «Reservar» en la ficha del inmueble ── */
+.btn-reservar-inmueble { @apply inline-flex w-full items-center justify-center gap-2 rounded-xl bg-(--color-gold-500) px-5 py-3.5 text-sm font-bold text-(--color-navy-900) transition hover:bg-(--color-gold-400); }
+.btn-reservar--login { @apply bg-(--color-navy-700) text-white hover:bg-(--color-navy-800); }
+
+/* ── Reportes (admin) ── */
+.periodo-tabs { @apply mb-4 flex flex-wrap gap-2; }
+.periodo-tab { @apply rounded-full border border-black/10 px-4 py-1.5 text-sm font-medium transition hover:bg-(--color-surface-alt); }
+.periodo-tab.active { @apply border-(--color-navy-700) bg-(--color-navy-700) text-white; }
+.reporte-filters { @apply mb-6 flex flex-wrap items-end gap-3; }
+.reporte-filters label { @apply flex flex-col gap-1 text-xs font-medium text-(--color-ink)/60; }
+.reporte-filters input,
+.reporte-filters select { @apply rounded-lg border border-black/10 bg-(--color-surface) px-3 py-2 text-sm text-(--color-ink) outline-none focus:border-(--color-navy-500); }
+.btn-filter-apply { @apply rounded-lg bg-(--color-navy-700) px-4 py-2 text-sm font-semibold text-white transition hover:bg-(--color-navy-800); }
+.btn-filter-reset { @apply text-sm font-medium text-(--color-ink)/55 hover:text-(--color-navy-700); }
+.export-buttons { @apply flex gap-2; }
+.btn-export { @apply inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-semibold transition; }
+.btn-export-csv { @apply border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100; }
+.btn-export-pdf { @apply border-red-200 bg-red-50 text-red-700 hover:bg-red-100; }
+.reporte-table-count { @apply text-sm text-(--color-ink)/50; }
+.admin-reservas-filtros { @apply mb-6 flex flex-wrap items-end gap-3; }
+
+/* ── Tarjetas guardadas (HU-20) ── */
+.tarjetas-pago-list { @apply flex flex-col gap-2; }
+.tarjeta-pago-item { @apply flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-(--color-surface) px-4 py-3 text-sm; }
+.tarjetas-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3; }
+.tarjeta-card { @apply flex flex-col gap-3 rounded-2xl border border-black/5 bg-white p-5 shadow-sm; }
+.tarjeta-card-marca { @apply flex items-center gap-2 text-base font-semibold; }
+.tarjeta-card-meta { @apply text-xs text-(--color-ink)/50; }
+#stripe-card-element { @apply rounded-lg border border-black/10 bg-(--color-surface) px-4 py-3; }
+#stripe-card-errors { @apply mt-2 block text-xs font-medium text-red-600; }
