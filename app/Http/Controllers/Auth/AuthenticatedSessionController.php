@@ -9,15 +9,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
-// HU-05: inicio y cierre de sesión
+/**
+ * Inicio y cierre de sesión (HU-05).
+ *
+ * Modelo principal: {@see \App\Models\User}. La validación de credenciales
+ * vive en {@see LoginRequest}, no aquí.
+ */
 class AuthenticatedSessionController extends Controller
 {
+    /** Muestra el formulario de inicio de sesión. */
     public function create(): View
     {
         return view('auth.login');
     }
 
-    // Autentica y lleva al usuario a la pantalla inicial de su rol (HU-05.1)
+    /** Autentica y lleva al usuario a la pantalla inicial de su rol (HU-05.1). */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
@@ -26,6 +32,7 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route($request->user()->rol->rutaInicio()));
     }
 
+    /** Cierra la sesión actual e invalida el token de la petición. */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

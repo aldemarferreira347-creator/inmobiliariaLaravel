@@ -26,6 +26,7 @@ class MensajeController extends Controller
 
     public function __construct(private readonly MensajeService $mensajes) {}
 
+    /** Bandeja de conversaciones del usuario autenticado, sin ningún hilo abierto todavía. */
     public function index(Request $request): View
     {
         return view($this->vistaPara($request), [
@@ -35,6 +36,7 @@ class MensajeController extends Controller
         ]);
     }
 
+    /** Abre una conversación concreta y marca sus mensajes como leídos por el usuario autenticado. */
     public function show(Request $request, Conversacion $conversacion): View
     {
         $this->authorize('view', $conversacion);
@@ -51,6 +53,7 @@ class MensajeController extends Controller
         ]);
     }
 
+    /** Envía un mensaje (con adjunto opcional) dentro de una conversación existente. */
     public function store(EnviarMensajeRequest $request, Conversacion $conversacion): RedirectResponse
     {
         $this->mensajes->enviar(
@@ -63,6 +66,7 @@ class MensajeController extends Controller
         return redirect()->route('mensajes.show', $conversacion);
     }
 
+    /** Abre (o reutiliza) la conversación sobre un inmueble y redirige a ella. */
     // Primer contacto desde la ficha del inmueble
     public function iniciar(Request $request, Inmueble $inmueble): RedirectResponse
     {
@@ -124,12 +128,14 @@ class MensajeController extends Controller
     // Apoyo
     // ----------------------------------------------------------------
 
+    /** Vista de bandeja según el rol: panel para el equipo interno, área propia para el cliente. */
     // El equipo interno ve la bandeja dentro del panel; el cliente, en su área
     private function vistaPara(Request $request): string
     {
         return $request->user()->rol->usaPanel() ? 'mensajes.panel' : 'mensajes.index';
     }
 
+    /** Conversaciones visibles para el usuario: todas si es administrador, solo las propias si no. */
     private function conversacionesDe(Request $request)
     {
         $usuario = $request->user();
@@ -155,6 +161,7 @@ class MensajeController extends Controller
             ->values();
     }
 
+    /** Convierte los mensajes del modelo al arreglo plano que consume la vista y el JSON del sondeo. */
     private function serializar($mensajes, Request $request): array
     {
         return $mensajes->map(fn (Mensaje $mensaje) => [

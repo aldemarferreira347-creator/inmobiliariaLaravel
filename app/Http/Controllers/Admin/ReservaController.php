@@ -14,7 +14,13 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-// HU-07 / HU-23: seguimiento y revisión de reservas desde el panel
+/**
+ * Seguimiento y revisión de reservas desde el panel (HU-07 / HU-23).
+ *
+ * Modelo principal: {@see Reserva}, con sus {@see Pago} asociados. La
+ * revisión (aprobar/rechazar pago) y la cancelación se delegan en
+ * {@see PagoService} y {@see ReservaService} respectivamente.
+ */
 class ReservaController extends Controller
 {
     public function __construct(
@@ -22,6 +28,7 @@ class ReservaController extends Controller
         private readonly PagoService $pagos,
     ) {}
 
+    /** Lista las reservas del sistema, con filtros por estado y rango de fechas. */
     public function index(Request $request): View
     {
         $filtros = $request->validate([
@@ -48,6 +55,7 @@ class ReservaController extends Controller
         ]);
     }
 
+    /** Detalle de una reserva: pagos, historial de auditoría y contrato asociado. */
     public function show(Reserva $reserva): View
     {
         return view('admin.reservas.show', [
@@ -56,6 +64,7 @@ class ReservaController extends Controller
         ]);
     }
 
+    /** Aprueba o rechaza el pago que el cliente declaró para la reserva. */
     // Aprobación o rechazo del pago declarado por el cliente
     public function revisarPago(RevisarPagoRequest $request, Reserva $reserva, Pago $pago): RedirectResponse
     {
@@ -73,6 +82,7 @@ class ReservaController extends Controller
         ]);
     }
 
+    /** Cancela una reserva desde el panel, dejando constancia del motivo. */
     public function cancelar(Request $request, Reserva $reserva): RedirectResponse
     {
         $this->authorize('cancelar', $reserva);

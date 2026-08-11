@@ -13,9 +13,15 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
-// HU-24: aplicación de la nueva contraseña desde el enlace recibido por correo
+/**
+ * Aplicación de la nueva contraseña desde el enlace recibido por correo (HU-24).
+ *
+ * Modelo principal: {@see User}. El token y su expiración los gestiona el
+ * broker `Password` de Laravel, no este controlador.
+ */
 class NewPasswordController extends Controller
 {
+    /** Muestra el formulario para definir la nueva contraseña, con el token recibido por correo. */
     public function create(Request $request, string $token): View
     {
         return view('auth.reset-password', [
@@ -24,6 +30,7 @@ class NewPasswordController extends Controller
         ]);
     }
 
+    /** Valida el token de recuperación y guarda la nueva contraseña. */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([

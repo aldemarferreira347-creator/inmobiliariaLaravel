@@ -25,6 +25,7 @@ class StripeWebhookController extends Controller
 {
     public function __construct(private readonly PagoService $pagos) {}
 
+    /** Punto de entrada del webhook: valida la firma Stripe y despacha el evento si es nuevo. */
     public function recibir(Request $request): Response
     {
         try {
@@ -47,6 +48,7 @@ class StripeWebhookController extends Controller
         return response(['recibido' => true], 200);
     }
 
+    /** Enruta el evento de Stripe al manejador correspondiente según su tipo. */
     private function procesar(Event $evento): void
     {
         match ($evento->type) {
@@ -56,6 +58,7 @@ class StripeWebhookController extends Controller
         };
     }
 
+    /** Aprueba en el sistema un {@see Pago} que Stripe confirmó como exitoso. */
     // HU-20.4: confirma pagos con tarjeta guardada que requirieron un paso de
     // autenticación adicional (3DS) tras la respuesta síncrona inicial
     private function procesarPagoExitoso(PaymentIntent $intent): void
@@ -69,6 +72,7 @@ class StripeWebhookController extends Controller
         $this->pagos->aprobar($pago);
     }
 
+    /** Rechaza en el sistema un {@see Pago} que Stripe reportó como fallido. */
     private function procesarPagoFallido(PaymentIntent $intent): void
     {
         $pago = Pago::where('referencia_pasarela', $intent->id)->first();

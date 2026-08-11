@@ -11,11 +11,18 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-// HU-25: perfil del usuario autenticado
+/**
+ * Perfil del usuario autenticado (HU-25).
+ *
+ * Modelo principal: {@see \App\Models\User}. El manejo del archivo de foto
+ * se delega en {@see AvatarService}; `misArriendos()` y `misCompras()`
+ * cruzan además con {@see \App\Models\Reserva} y {@see \App\Models\Venta}.
+ */
 class PerfilController extends Controller
 {
     public function __construct(private readonly AvatarService $avatares) {}
 
+    /** Muestra el formulario de edición del perfil del usuario autenticado. */
     public function edit(Request $request): View
     {
         return view('perfil.edit', [
@@ -24,6 +31,7 @@ class PerfilController extends Controller
         ]);
     }
 
+    /** Actualiza los datos básicos del perfil del usuario autenticado. */
     public function update(PerfilUpdateRequest $request): RedirectResponse
     {
         $request->user()->update($request->validated());
@@ -31,6 +39,7 @@ class PerfilController extends Controller
         return $this->volverAlPerfil('Perfil actualizado correctamente.');
     }
 
+    /** Reemplaza la foto de perfil del usuario autenticado. */
     public function actualizarFoto(FotoPerfilRequest $request): RedirectResponse
     {
         $this->avatares->reemplazar($request->user(), $request->file('foto'));
@@ -38,6 +47,7 @@ class PerfilController extends Controller
         return $this->volverAlPerfil('Foto de perfil actualizada correctamente.');
     }
 
+    /** Elimina la foto de perfil del usuario autenticado. */
     public function eliminarFoto(Request $request): RedirectResponse
     {
         $this->avatares->eliminar($request->user());
@@ -76,6 +86,7 @@ class PerfilController extends Controller
         ]);
     }
 
+    /** Redirige a la edición del perfil con un mensaje flash de éxito. */
     private function volverAlPerfil(string $mensaje): RedirectResponse
     {
         return redirect()

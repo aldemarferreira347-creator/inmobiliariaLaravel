@@ -10,11 +10,22 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
-// HU-04 / HU-08: CRUD de inmuebles del panel de administración
+/**
+ * CRUD de inmuebles del panel de administración (HU-04 / HU-08).
+ *
+ * Modelo principal: {@see \App\Models\Inmueble}. También coordina:
+ * - {@see ImagenInmuebleService} para guardar y eliminar las fotos del inmueble.
+ * - La relación Inmueble::reservas() (vía tieneReservasActivas()) para impedir
+ *   borrar inmuebles con reservas vigentes.
+ *
+ * Rutas: Route::resource('inmuebles', ...) dentro del grupo "admin." en
+ * routes/web.php -> admin.inmuebles.{index,store,show,update,destroy}.
+ */
 class InmuebleController extends Controller
 {
     public function __construct(private readonly ImagenInmuebleService $imagenes) {}
 
+    /** Lista los inmuebles del panel con su galería precargada y el total de inmuebles por estado. */
     public function index(): View
     {
         return view('admin.inmuebles.index', [
@@ -29,6 +40,7 @@ class InmuebleController extends Controller
         ]);
     }
 
+    /** Registra un inmueble nuevo con su código autogenerado y sus imágenes iniciales. */
     // El código se genera aquí: el formulario lo muestra en solo lectura
     public function store(InmuebleRequest $request): RedirectResponse
     {
@@ -46,6 +58,7 @@ class InmuebleController extends Controller
         return $this->volverAlListado("Inmueble «{$inmueble->titulo}» registrado con el código {$inmueble->codigo}.");
     }
 
+    /** Muestra el detalle de un inmueble para el modal de edición, con su estado recalculado en vivo. */
     public function show(Inmueble $inmueble): View
     {
         return view('admin.inmuebles.show', [
@@ -54,6 +67,7 @@ class InmuebleController extends Controller
         ]);
     }
 
+    /** Actualiza los datos de un inmueble existente y agrega las imágenes nuevas subidas en el formulario. */
     public function update(InmuebleRequest $request, Inmueble $inmueble): RedirectResponse
     {
         DB::transaction(function () use ($request, $inmueble) {
@@ -64,6 +78,7 @@ class InmuebleController extends Controller
         return $this->volverAlListado("Inmueble «{$inmueble->titulo}» actualizado correctamente.");
     }
 
+    /** Elimina un inmueble junto con sus imágenes; se bloquea si tiene reservas activas asociadas. */
     // Un inmueble con reservas vivas conserva su histórico y no se elimina (HU-04.5)
     public function destroy(Inmueble $inmueble): RedirectResponse
     {
@@ -86,6 +101,7 @@ class InmuebleController extends Controller
         return $this->volverAlListado("Inmueble «{$titulo}» eliminado correctamente.");
     }
 
+    /** Redirige al listado del panel con un mensaje flash de éxito o error. */
     private function volverAlListado(string $mensaje, string $tipo = 'success'): RedirectResponse
     {
         return redirect()

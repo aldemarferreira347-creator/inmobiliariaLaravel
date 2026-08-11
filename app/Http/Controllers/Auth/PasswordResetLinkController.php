@@ -8,14 +8,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
 
-// HU-24: solicitud del enlace de recuperación de contraseña
+/**
+ * Solicitud del enlace de recuperación de contraseña (HU-24).
+ *
+ * El envío del correo con el enlace lo resuelve el broker `Password` de
+ * Laravel sobre el modelo {@see \App\Models\User}.
+ */
 class PasswordResetLinkController extends Controller
 {
+    /** Muestra el formulario para solicitar el enlace de recuperación. */
     public function create(): View
     {
         return view('auth.forgot-password');
     }
 
+    /** Envía el correo con el enlace de recuperación de contraseña. */
     public function store(Request $request): RedirectResponse
     {
         $request->validate(['email' => ['required', 'email']]);

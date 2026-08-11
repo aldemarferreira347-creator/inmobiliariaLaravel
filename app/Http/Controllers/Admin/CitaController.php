@@ -11,11 +11,18 @@ use App\Servicios\CitaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
-// HU-10: gestión de citas desde el panel de administración
+/**
+ * Gestión de citas desde el panel de administración (HU-10).
+ *
+ * Modelo principal: {@see Cita}. La asignación de asesor se delega en
+ * {@see CitaService}; los candidatos a asesor salen de {@see User}
+ * filtrado por rol.
+ */
 class CitaController extends Controller
 {
     public function __construct(private readonly CitaService $citas) {}
 
+    /** Tablero de citas: sin asignar y agrupadas por asesor. */
     public function index(): View
     {
         $sinAsignar = Cita::query()
@@ -38,6 +45,7 @@ class CitaController extends Controller
         ]);
     }
 
+    /** Asigna un asesor a una cita pendiente. */
     public function asignar(AsignarCitaRequest $request, Cita $cita): RedirectResponse
     {
         $asesor = User::findOrFail($request->integer('asesor_id'));
@@ -47,6 +55,7 @@ class CitaController extends Controller
         return back()->with(['mensaje' => 'Asesor asignado correctamente.', 'tipo' => 'success']);
     }
 
+    /** Detalle de solo lectura de una cita: cliente, inmueble, observación y auditoría. */
     // Detalle de cita de solo lectura: cliente, inmueble, observación y auditoría
     public function show(Cita $cita): View
     {

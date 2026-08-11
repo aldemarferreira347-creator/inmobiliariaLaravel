@@ -14,11 +14,18 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-// HU-14: ventas gestionadas por el asesor
+/**
+ * Ventas gestionadas por el asesor (HU-14).
+ *
+ * Modelo principal: {@see Venta}, ligada a un {@see Inmueble} y a un
+ * cliente ({@see User}). El registro, cierre y cancelación se delegan en
+ * {@see VentaService}.
+ */
 class VentaController extends Controller
 {
     public function __construct(private readonly VentaService $ventas) {}
 
+    /** Lista las ventas visibles para el usuario: todas si es administrador, solo las propias si es asesor. */
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Venta::class);
@@ -37,6 +44,7 @@ class VentaController extends Controller
         ]);
     }
 
+    /** Registra una venta nueva del asesor autenticado sobre un inmueble disponible. */
     public function store(StoreVentaRequest $request): RedirectResponse
     {
         $venta = $this->ventas->registrar($request->validated(), $request->user());
@@ -46,6 +54,7 @@ class VentaController extends Controller
             ->with(['mensaje' => "Venta de «{$venta->inmueble->titulo}» registrada.", 'tipo' => 'success']);
     }
 
+    /** Detalle de una venta con su inmueble, cliente y asesor. */
     public function show(Venta $venta): View
     {
         $this->authorize('view', $venta);
@@ -55,6 +64,7 @@ class VentaController extends Controller
         ]);
     }
 
+    /** Cierra formalmente una venta en curso. */
     public function cerrar(Venta $venta): RedirectResponse
     {
         $this->authorize('update', $venta);
@@ -64,6 +74,7 @@ class VentaController extends Controller
         return back()->with(['mensaje' => 'Venta cerrada correctamente.', 'tipo' => 'success']);
     }
 
+    /** Cancela una venta y devuelve el inmueble al catálogo. */
     public function cancelar(Request $request, Venta $venta): RedirectResponse
     {
         $this->authorize('update', $venta);
@@ -75,6 +86,7 @@ class VentaController extends Controller
         return back()->with(['mensaje' => 'Venta cancelada; el inmueble vuelve al catálogo.', 'tipo' => 'success']);
     }
 
+    /** Adjunta el PDF de la escritura de una venta cerrada. */
     public function subirEscritura(Request $request, Venta $venta): RedirectResponse
     {
         $this->authorize('update', $venta);

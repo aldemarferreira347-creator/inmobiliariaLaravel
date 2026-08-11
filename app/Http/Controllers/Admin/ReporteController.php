@@ -15,13 +15,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Reportes del panel (HU-06 / HU-21).
  *
- * Cada tipo de reporte es su propia pantalla con sus filtros y sus dos
- * exportaciones, tal como pide la documentación.
+ * Cada tipo de reporte ({@see TipoReporte}) es su propia pantalla con sus
+ * filtros y sus dos exportaciones, tal como pide la documentación. La
+ * construcción del reporte se delega en {@see FabricaReportes}.
  */
 class ReporteController extends Controller
 {
     public function __construct(private readonly FabricaReportes $reportes) {}
 
+    /** Panel de entrada con el resumen de cifras de cada tipo de reporte. */
     // Panel de entrada con las cifras de cada tipo de reporte
     public function index(Request $request): View
     {
@@ -36,6 +38,7 @@ class ReporteController extends Controller
         return view('admin.reportes.index', compact('filtro', 'resumenes'));
     }
 
+    /** Detalle de un tipo de reporte con sus filtros aplicados. */
     public function show(Request $request, TipoReporte $tipo): View
     {
         $filtro = FiltroReporte::desdePeticion($request);
@@ -48,11 +51,13 @@ class ReporteController extends Controller
         ]);
     }
 
+    /** Exporta el reporte filtrado a Excel. */
     public function excel(Request $request, TipoReporte $tipo, ExportadorExcel $exportador): StreamedResponse
     {
         return $exportador->exportar($this->reportes->crear($tipo, FiltroReporte::desdePeticion($request)));
     }
 
+    /** Exporta el reporte filtrado a PDF. */
     public function pdf(Request $request, TipoReporte $tipo, ExportadorPdf $exportador): StreamedResponse
     {
         return $exportador->exportar($this->reportes->crear($tipo, FiltroReporte::desdePeticion($request)));

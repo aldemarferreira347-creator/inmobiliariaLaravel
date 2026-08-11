@@ -15,6 +15,7 @@ class DescargaController extends Controller
 {
     public function __construct(private readonly ArchivoPrivadoService $archivos) {}
 
+    /** Descarga el PDF de un {@see Contrato} si el usuario autenticado tiene permiso sobre él. */
     public function contrato(Contrato $contrato): StreamedResponse
     {
         $this->authorize('descargar', $contrato);
@@ -24,6 +25,7 @@ class DescargaController extends Controller
         return $this->archivos->descargar($contrato->archivo_ruta, "{$contrato->numero_contrato}.pdf");
     }
 
+    /** Descarga la escritura PDF de una {@see Venta} si el usuario autenticado tiene permiso sobre ella. */
     public function escritura(Venta $venta): StreamedResponse
     {
         $this->authorize('descargarEscritura', $venta);

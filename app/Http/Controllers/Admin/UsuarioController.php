@@ -14,9 +14,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-// HU-16 / HU-26: administración de usuarios y roles
+/**
+ * Administración de usuarios y roles (HU-16 / HU-26).
+ *
+ * Modelo principal: {@see User}. Los cambios de estado quedan registrados
+ * en {@see Auditoria} para conservar el histórico de la cuenta.
+ */
 class UsuarioController extends Controller
 {
+    /** Lista todos los usuarios del sistema, con el total por rol. */
     public function index(): View
     {
         return view('admin.usuarios.index', [
@@ -28,6 +34,7 @@ class UsuarioController extends Controller
         ]);
     }
 
+    /** Crea un usuario nuevo con el rol indicado. */
     public function store(StoreUsuarioRequest $request): RedirectResponse
     {
         $usuario = User::create($request->validated());
@@ -37,6 +44,7 @@ class UsuarioController extends Controller
         );
     }
 
+    /** Reasigna el rol de un usuario existente (HU-26.1). */
     // HU-26.1: reasignación del rol de un usuario existente
     public function cambiarRol(Request $request, User $usuario): RedirectResponse
     {
@@ -76,6 +84,7 @@ class UsuarioController extends Controller
         return $this->volverAlListado("Usuario «{$usuario->nombre}» marcado como {$nuevoEstado->etiqueta()}.");
     }
 
+    /** Elimina un usuario; se bloquea si tiene historial (reservas, etc.) asociado. */
     // Un usuario con reservas asociadas no se elimina: se desactiva para no perder el histórico
     public function destroy(User $usuario): RedirectResponse
     {
@@ -94,6 +103,7 @@ class UsuarioController extends Controller
         return $this->volverAlListado("Usuario «{$nombre}» eliminado correctamente.");
     }
 
+    /** Redirige al listado de usuarios con un mensaje flash de éxito o error. */
     private function volverAlListado(string $mensaje, string $tipo = 'success'): RedirectResponse
     {
         return redirect()

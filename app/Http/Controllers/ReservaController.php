@@ -14,7 +14,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-// HU-07 / HU-23: reservas del cliente autenticado
+/**
+ * Reservas del cliente autenticado (HU-07 / HU-23).
+ *
+ * Modelo principal: {@see Reserva}, ligada a un {@see Inmueble}. La creación
+ * y cancelación se delegan en {@see ReservaService}; el registro y pago del
+ * depósito, en {@see PagoService} y {@see StripeCardService}.
+ */
 class ReservaController extends Controller
 {
     public function __construct(
@@ -23,6 +29,7 @@ class ReservaController extends Controller
         private readonly StripeCardService $tarjetas,
     ) {}
 
+    /** Lista las reservas del cliente autenticado agrupadas por estado. */
     public function index(Request $request): View
     {
         $reservas = $request->user()
@@ -37,6 +44,7 @@ class ReservaController extends Controller
         ]);
     }
 
+    /** Crea una nueva reserva del cliente autenticado sobre un inmueble. */
     public function store(SolicitarReservaRequest $request): RedirectResponse
     {
         $inmueble = Inmueble::findOrFail($request->integer('inmueble_id'));
@@ -53,6 +61,7 @@ class ReservaController extends Controller
             ->with(['mensaje' => "Reserva {$reserva->codigo_reserva} registrada correctamente.", 'tipo' => 'success']);
     }
 
+    /** Detalle de una reserva propia: pagos, historial, contrato y tarjetas disponibles para pagar. */
     public function show(Reserva $reserva): View
     {
         $this->authorize('view', $reserva);
@@ -63,6 +72,7 @@ class ReservaController extends Controller
         ]);
     }
 
+    /** Registra el pago declarado por el cliente para una reserva, a la espera de revisión (HU-23). */
     // HU-23: el cliente declara el pago; queda a la espera de revisión
     public function registrarPago(RegistrarPagoRequest $request, Reserva $reserva): RedirectResponse
     {
@@ -76,6 +86,7 @@ class ReservaController extends Controller
             ]);
     }
 
+    /** Paga el depósito de la reserva con una tarjeta ya guardada, sin volver a pedir datos. */
     // HU-20.4 / HU-23.1: paga la reserva con una tarjeta ya guardada, sin volver a pedir datos
     public function pagarConTarjeta(Request $request, Reserva $reserva, MetodoPagoGuardado $tarjeta): RedirectResponse
     {
@@ -92,6 +103,7 @@ class ReservaController extends Controller
             });
     }
 
+    /** Cancela una reserva propia antes de haber registrado el pago (HU-07.5). */
     // HU-07.5: el cliente retira su reserva antes de registrar el pago
     public function cancelar(Request $request, Reserva $reserva): RedirectResponse
     {

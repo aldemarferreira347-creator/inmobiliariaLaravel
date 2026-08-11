@@ -12,16 +12,24 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
-// HU-03: registro público de clientes
+/**
+ * Registro público de clientes (HU-03).
+ *
+ * Modelo principal: {@see User}, siempre creado con rol Cliente — asesores
+ * y administradores solo se dan de alta desde el panel. El correo de
+ * bienvenida se envía a través de {@see NotificacionService}.
+ */
 class RegisteredUserController extends Controller
 {
     public function __construct(private readonly NotificacionService $notificaciones) {}
 
+    /** Muestra el formulario público de registro. */
     public function create(): View
     {
         return view('auth.register');
     }
 
+    /** Crea la cuenta de cliente, envía el correo de bienvenida e inicia sesión automáticamente. */
     // El autorregistro solo crea cuentas de cliente: asesores y administradores los da de alta el panel
     public function store(RegistroRequest $request): RedirectResponse
     {

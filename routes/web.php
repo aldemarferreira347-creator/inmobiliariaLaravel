@@ -24,6 +24,18 @@ use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
+/*
+ * Mapa general de rutas web de la aplicación:
+ *  - Webhook de Stripe (pública, validada por firma, no por sesión).
+ *  - Catálogo público de inmuebles (sin autenticación).
+ *  - Área del cliente autenticado: perfil, favoritos, reservas, tarjetas,
+ *    citas, mensajería y notificaciones.
+ *  - Panel del asesor ('/asesor'): ventas y sus citas asignadas.
+ *  - Panel de administración ('/admin'): inmuebles, usuarios, citas,
+ *    franjas, reservas, contratos, notificaciones y reportes.
+ * Las rutas de autenticación (login, registro, contraseña) están en auth.php.
+ */
+
 // HU-20.4 / HU-23.1: Stripe llama a esta ruta directamente; se valida por
 // firma (Stripe-Signature), no por sesión, y por eso vive fuera de los
 // grupos de abajo y está exenta de CSRF (ver bootstrap/app.php).

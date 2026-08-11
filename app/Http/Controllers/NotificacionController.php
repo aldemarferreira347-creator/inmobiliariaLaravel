@@ -7,9 +7,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-// HU-15: centro de notificaciones del usuario
+/**
+ * Centro de notificaciones del usuario autenticado (HU-15).
+ *
+ * Modelo principal: {@see Notificacion}, siempre acotado al usuario que
+ * consulta o marca como leídas sus propias notificaciones.
+ */
 class NotificacionController extends Controller
 {
+    /** Lista las últimas 100 notificaciones del usuario autenticado, con su conteo de no leídas. */
     public function index(Request $request): View
     {
         $notificaciones = $request->user()->notificaciones()->recientes()->limit(100)->get();
@@ -20,6 +26,7 @@ class NotificacionController extends Controller
         ]);
     }
 
+    /** Marca una notificación propia como leída. */
     // Filtrar por usuario evita que nadie marque notificaciones ajenas
     public function marcarLeida(Request $request, Notificacion $notificacion): RedirectResponse
     {
@@ -30,6 +37,7 @@ class NotificacionController extends Controller
         return back();
     }
 
+    /** Marca todas las notificaciones pendientes del usuario autenticado como leídas. */
     public function marcarTodas(Request $request): RedirectResponse
     {
         $request->user()->notificaciones()->sinLeer()->update(['leida_en' => now()]);

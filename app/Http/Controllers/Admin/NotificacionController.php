@@ -11,11 +11,18 @@ use App\Servicios\NotificacionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
-// HU-22.1: envío de notificaciones del sistema desde el panel
+/**
+ * Envío de notificaciones del sistema desde el panel (HU-22.1).
+ *
+ * El envío en sí (incluyendo el correo opcional) se delega en
+ * {@see NotificacionService}; el destino puede ser un usuario, un rol
+ * completo ({@see \App\Enumerados\RolUsuario}) o todos los usuarios.
+ */
 class NotificacionController extends Controller
 {
     public function __construct(private readonly NotificacionService $notificaciones) {}
 
+    /** Formulario para redactar una notificación, con el listado de usuarios activos. */
     public function create(): View
     {
         return view('admin.notificaciones.create', [
@@ -23,6 +30,7 @@ class NotificacionController extends Controller
         ]);
     }
 
+    /** Envía la notificación al destino elegido (un usuario, un rol o todos). */
     public function store(EnviarNotificacionRequest $request): RedirectResponse
     {
         $datos = $request->validated();
@@ -44,6 +52,7 @@ class NotificacionController extends Controller
             ->with(['mensaje' => "Notificación enviada a {$alcance} usuario(s).", 'tipo' => 'success']);
     }
 
+    /** Envía la notificación a un único usuario. Devuelve el número de destinatarios (1). */
     private function aUnUsuario(array $datos, bool $conCorreo): int
     {
         $destinatario = User::findOrFail($datos['usuario_id']);
@@ -59,6 +68,7 @@ class NotificacionController extends Controller
         return 1;
     }
 
+    /** Envía la notificación a todos los usuarios de un rol. Devuelve el número de destinatarios. */
     private function aUnRol(array $datos, bool $conCorreo): int
     {
         return $this->notificaciones->paraRol(

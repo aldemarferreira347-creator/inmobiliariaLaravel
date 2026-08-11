@@ -8,9 +8,14 @@ use App\Models\ConfigFranjaCita;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
-// RF-26.2: configuración de las franjas horarias disponibles para agendar citas
+/**
+ * Configuración de las franjas horarias disponibles para agendar citas (RF-26.2).
+ *
+ * Modelo principal: {@see ConfigFranjaCita}, una fila por día de la semana.
+ */
 class FranjaController extends Controller
 {
+    /** Muestra la configuración de franja horaria de cada día de la semana. */
     public function index(): View
     {
         return view('admin.franjas.index', [
@@ -19,6 +24,7 @@ class FranjaController extends Controller
         ]);
     }
 
+    /** Guarda el horario y el estado (activo/inactivo) de la franja de un día. */
     public function update(ActualizarFranjaRequest $request): RedirectResponse
     {
         ConfigFranjaCita::guardarPara(
