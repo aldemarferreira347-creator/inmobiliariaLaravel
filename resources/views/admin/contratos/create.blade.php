@@ -31,9 +31,10 @@
                 <div class="form-grid">
                     <div class="form-group full">
                         <label for="reserva_id">Reserva <span class="req">*</span></label>
-                        <select id="reserva_id" name="reserva_id" required>
+                        <select id="reserva_id" name="reserva_id" required data-reserva-monto-select>
                             @foreach ($reservas as $reserva)
-                                <option value="{{ $reserva->id }}" @selected(old('reserva_id') == $reserva->id)>
+                                <option value="{{ $reserva->id }}" data-monto="{{ $reserva->monto_formateado }}"
+                                    @selected(old('reserva_id') == $reserva->id)>
                                     {{ $reserva->codigo_reserva }} — {{ $reserva->inmueble->titulo }}
                                     ({{ $reserva->cliente->nombre }})
                                 </option>
@@ -63,12 +64,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="valor_mensual">Valor mensual <span class="req">*</span></label>
-                        <input type="number" id="valor_mensual" name="valor_mensual" min="1" step="1000"
-                            value="{{ old('valor_mensual') }}" required>
-                        @error('valor_mensual')
-                            <span class="error-text">{{ $message }}</span>
-                        @enderror
+                        <label for="valor_mensual">Valor del contrato</label>
+                        <input type="text" id="valor_mensual" class="input-readonly" disabled
+                            data-reserva-monto-display>
+                        <small class="field-note">
+                            <x-icon name="lock" class="h-3 w-3" /> Es el precio de venta o arriendo ya fijado en la
+                            reserva; no se puede editar aquí.
+                        </small>
                     </div>
                 </div>
 

@@ -2,6 +2,19 @@
 
 @section('titulo', 'Notificaciones')
 
+@php
+    // Agrupar por antigüedad ayuda a escanear de un vistazo un historial largo
+    $grupos = $notificaciones->groupBy(function ($notificacion) {
+        return match (true) {
+            $notificacion->creado_en->isToday() => 'Hoy',
+            $notificacion->creado_en->isYesterday() => 'Ayer',
+            $notificacion->creado_en->greaterThan(now()->subDays(7)) => 'Esta semana',
+            default => 'Anteriores',
+        };
+    });
+    $ordenGrupos = ['Hoy', 'Ayer', 'Esta semana', 'Anteriores'];
+@endphp
+
 @section(auth()->user()->rol->usaPanel() ? 'panel' : 'contenido')
     @unless (auth()->user()->rol->usaPanel())
         <div class="page-hero">
@@ -12,7 +25,9 @@
     @endunless
 
     <div class="notif-page">
-        <x-flash />
+        @unless (auth()->user()->rol->usaPanel())
+            <x-flash />
+        @endunless
 
         <div class="notif-header">
             <div>
@@ -38,39 +53,63 @@
                 <p>Aquí verás los avisos sobre tus reservas, contratos y mensajes.</p>
             </div>
         @else
-            <div class="notif-list">
-                @foreach ($notificaciones as $notificacion)
-                    <article @class(['notif-card', 'no-leida' => ! $notificacion->estaLeida()])>
-                        <div class="notif-icon {{ $notificacion->tipo->claseCss() }}">
-                            <x-icon :name="$notificacion->tipo->icono()" class="h-4 w-4" />
-                        </div>
+            <div class="notif-filters" role="tablist">
+                <button type="button" class="notif-filter-tab is-active" data-notif-filtro="todas">
+                    Todas <span class="notif-filter-count">{{ $notificaciones->count() }}</span>
+                </button>
+                <button type="button" class="notif-filter-tab" data-notif-filtro="no-leidas">
+                    No leídas <span class="notif-filter-count">{{ $sinLeer }}</span>
+                </button>
+            </div>
 
-                        <div class="notif-body">
-                            <h4>{{ $notificacion->titulo }}</h4>
-                            <p>{{ $notificacion->mensaje }}</p>
+            <div class="notif-list" data-notif-lista>
+                @foreach ($ordenGrupos as $clave)
+                    @continue(! $grupos->has($clave))
 
-                            <span class="notif-time">
-                                <x-icon name="clock" class="h-3 w-3" />
-                                {{ $notificacion->creado_en->format('d/m/Y · H:i') }}
-                            </span>
+                    <div class="notif-group">
+                        <h3 class="notif-group-title">{{ $clave }}</h3>
 
-                            @if ($notificacion->enlace)
-                                <a href="{{ $notificacion->enlace }}" class="btn-text">
-                                    Ver detalle <x-icon name="arrow-right" class="h-3.5 w-3.5" />
-                                </a>
-                            @endif
-                        </div>
+                        @foreach ($grupos[$clave] as $notificacion)
+                            <article @class(['notif-card', 'no-leida' => ! $notificacion->estaLeida()])
+                                data-leida="{{ $notificacion->estaLeida() ? 'si' : 'no' }}">
+                                <span class="notif-dot-slot">
+                                    @unless ($notificacion->estaLeida())
+                                        <span class="notif-dot" aria-hidden="true"></span>
+                                    @endunless
+                                </span>
 
-                        @unless ($notificacion->estaLeida())
-                            <form method="POST" action="{{ route('notificaciones.leida', $notificacion) }}">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="notif-mark" title="Marcar como leída">
-                                    <x-icon name="check" class="h-4 w-4" />
-                                </button>
-                            </form>
-                        @endunless
-                    </article>
+                                <div class="notif-icon {{ $notificacion->tipo->claseCss() }}">
+                                    <x-icon :name="$notificacion->tipo->icono()" class="h-4 w-4" />
+                                </div>
+
+                                <div class="notif-body">
+                                    <h4>{{ $notificacion->titulo }}</h4>
+                                    <p>{{ $notificacion->mensaje }}</p>
+
+                                    <span class="notif-time">
+                                        <x-icon name="clock" class="h-3 w-3" />
+                                        {{ $notificacion->creado_en->format('d/m/Y · H:i') }}
+                                    </span>
+
+                                    @if ($notificacion->enlace)
+                                        <a href="{{ $notificacion->enlace }}" class="btn-text">
+                                            Ver detalle <x-icon name="arrow-right" class="h-3.5 w-3.5" />
+                                        </a>
+                                    @endif
+                                </div>
+
+                                @unless ($notificacion->estaLeida())
+                                    <form method="POST" action="{{ route('notificaciones.leida', $notificacion) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="notif-mark" title="Marcar como leída">
+                                            <x-icon name="check" class="h-4 w-4" />
+                                        </button>
+                                    </form>
+                                @endunless
+                            </article>
+                        @endforeach
+                    </div>
                 @endforeach
             </div>
         @endif

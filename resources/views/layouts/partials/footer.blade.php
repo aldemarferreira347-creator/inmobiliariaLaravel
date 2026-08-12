@@ -36,7 +36,7 @@
                 <ul class="footer-links">
                     <li><x-icon name="map-pin" class="h-4 w-4" /> Av. Principal #15-78, Neiva</li>
                     <li>
-                        <a href="tel:+573138161568"><x-icon name="phone" class="h-4 w-4" /> 313 816 1568</a>
+                        <a href="tel:+573104840917"><x-icon name="phone" class="h-4 w-4" /> 310 484 0917</a>
                     </li>
                     <li>
                         <a href="#" aria-label="Facebook"><x-icon name="facebook" class="h-4 w-4" /> Facebook</a>

@@ -62,6 +62,24 @@ class NotificacionTest extends TestCase
         $this->actingAs($usuario)->patch(route('notificaciones.leidas'))->assertRedirect();
 
         $this->assertSame(0, $usuario->notificacionesSinLeer());
+        // Marcar como leída no solo actualiza leida_en: la fila se elimina de verdad
+        $this->assertSame(0, Notificacion::count());
+    }
+
+    public function test_marcar_una_notificacion_como_leida_la_elimina(): void
+    {
+        $usuario = User::factory()->create();
+        $notificacion = Notificacion::create([
+            'usuario_id' => $usuario->id,
+            'titulo' => 'Aviso',
+            'mensaje' => 'Contenido de prueba.',
+        ]);
+
+        $this->actingAs($usuario)
+            ->patch(route('notificaciones.leida', $notificacion))
+            ->assertRedirect();
+
+        $this->assertModelMissing($notificacion);
     }
 
     public function test_un_cliente_no_envia_notificaciones_del_sistema(): void

@@ -66,11 +66,20 @@ class MensajeController extends Controller
         return redirect()->route('mensajes.show', $conversacion);
     }
 
-    /** Abre (o reutiliza) la conversación sobre un inmueble y redirige a ella. */
+    /**
+     * Abre —o reutiliza— la conversación sobre un inmueble y redirige a ella.
+     * Si el formulario de contacto de la ficha trae un mensaje, lo envía de una vez.
+     */
     // Primer contacto desde la ficha del inmueble
     public function iniciar(Request $request, Inmueble $inmueble): RedirectResponse
     {
+        $request->validate(['mensaje' => ['nullable', 'string', 'max:2000']]);
+
         $conversacion = $this->mensajes->abrirConversacion($request->user(), $inmueble);
+
+        if ($request->filled('mensaje')) {
+            $this->mensajes->enviar($conversacion, $request->user(), $request->input('mensaje'), null);
+        }
 
         return redirect()->route('mensajes.show', $conversacion);
     }

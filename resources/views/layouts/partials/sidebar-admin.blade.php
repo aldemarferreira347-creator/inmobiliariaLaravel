@@ -26,10 +26,6 @@
 <a href="{{ route('inmuebles.index') }}" @class(['active' => request()->routeIs('inmuebles.*')])>
     <x-icon name="search" class="nav-icon" /> Ver catálogo
 </a>
-<a href="{{ route('notificaciones.index') }}" @class(['active' => request()->routeIs('notificaciones.*')])>
-    <x-icon name="bell" class="nav-icon" /> Notificaciones
-    <span class="nav-badge hidden" data-badge-notificaciones>0</span>
-</a>
 <a href="{{ route('admin.notificaciones.create') }}" @class(['active' => request()->routeIs('admin.notificaciones.*')])>
     <x-icon name="megaphone" class="nav-icon" /> Enviar Notificación
 </a>

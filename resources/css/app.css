@@ -33,8 +33,14 @@
    BASE
 ════════════════════════════════════════════════════════════ */
 body {
-  @apply bg-(--color-surface) text-(--color-ink) antialiased;
+  @apply flex min-h-screen flex-col bg-(--color-surface) text-(--color-ink) antialiased;
   font-family: var(--font-body);
+}
+#contenido {
+  @apply flex flex-1 flex-col;
+}
+#contenido:focus {
+  outline: none;
 }
 h1,
 h2,
@@ -72,6 +78,11 @@ a { @apply no-underline; }
 header {
   @apply sticky top-0 z-50 border-b border-navy-900/10 bg-(--color-navy-900)/95 backdrop-blur shadow-lg shadow-navy-950/30;
 }
+/* La cabecera es de ancho completo: el logo y las acciones quedan pegados
+   a los bordes de la ventana, no centrados como el resto del contenido. */
+header .container {
+  @apply max-w-none px-6;
+}
 header nav {
   @apply flex items-center justify-between gap-4 py-4;
 }
@@ -94,6 +105,12 @@ header nav {
 .nav-links li a.btn-nav-logout {
   @apply text-white hover:text-white;
 }
+.nav-links li a.nav-link-icon {
+  @apply relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full px-0 py-0;
+}
+.nav-link-icon .nav-badge {
+  @apply absolute -top-1 -right-1 ml-0 h-4 min-w-4 px-1 text-[10px];
+}
 
 @media (max-width: 767px) {
   .nav-links {
@@ -102,6 +119,16 @@ header nav {
   }
   .nav-links.is-open { display: flex; }
   .nav-links li a { @apply w-full rounded-lg py-3; }
+  .nav-links li a.nav-link-icon {
+    @apply w-full flex-row justify-start gap-2 rounded-lg px-3 py-3;
+  }
+  .nav-links li a.nav-link-icon::after {
+    content: "Notificaciones";
+    @apply text-sm font-medium;
+  }
+  .nav-link-icon .nav-badge {
+    @apply static ml-auto h-5 min-w-5 px-1.5 text-[11px];
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -131,6 +158,12 @@ header nav {
 }
 .btn-contactar-asesor {
   @apply flex w-full items-center justify-center gap-2 rounded-xl bg-(--color-navy-700) px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-(--color-navy-800);
+}
+.btn-agendar-visita {
+  @apply flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700;
+}
+.detalle-acciones-primarias {
+  @apply mt-5 flex flex-col gap-3 border-t border-black/5 pt-5;
 }
 .btn-toggle-fav-hero {
   @apply absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-110;
@@ -253,7 +286,9 @@ header nav {
 .estado.reservado { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
 .estado.ocupado { @apply bg-black/10 text-(--color-ink)/60; }
 .precios-card { @apply mt-1 flex flex-col gap-0.5; }
-.precio-card { @apply flex items-baseline justify-between; }
+.precio-card {
+  @apply mb-4 flex items-center justify-between rounded-lg border border-black/5 bg-(--color-surface) px-3 py-2.5;
+}
 .precio-label { @apply text-xs text-(--color-ink)/50; }
 .precio-valor { @apply font-display text-lg font-bold text-(--color-gold-600); }
 
@@ -415,10 +450,11 @@ header nav {
 .map-address-card { @apply absolute bottom-3 left-3 max-w-[70%] rounded-xl bg-white/95 p-3 shadow-md backdrop-blur; }
 .addr-main { @apply text-sm font-semibold; }
 .addr-sub { @apply text-xs text-(--color-ink)/60; }
-.right-column { @apply lg:sticky lg:top-24 lg:h-fit; }
+.right-column { @apply space-y-6 lg:sticky lg:top-24 lg:h-fit; }
 .contact-form-card { @apply rounded-2xl border border-black/5 bg-white p-6 shadow-sm; }
 .contact-form-card h2 { @apply text-xl; }
 .form-subtitle { @apply mb-5 mt-1 text-sm text-(--color-ink)/60; }
+.contact-form-card textarea { @apply w-full rounded-lg border border-black/10 px-3.5 py-2.5 text-sm outline-none focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20; }
 
 /* ════════════════════════════════════════════════════════════
    AUTENTICACIÓN (login / registro / recuperar)
@@ -526,7 +562,8 @@ footer {
 .avatar-img-preview { @apply h-24 w-24 rounded-full object-cover; }
 .user-role { @apply rounded-full bg-(--color-navy-500)/10 px-2.5 py-1 text-xs font-medium text-(--color-navy-700); }
 .perfil-menu { @apply mt-4 flex flex-col gap-1; }
-.perfil-menu a { @apply flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-(--color-ink)/70 transition hover:bg-(--color-surface-alt) hover:text-(--color-navy-900); }
+.perfil-menu a,
+.perfil-menu button { @apply flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-(--color-ink)/70 transition hover:bg-(--color-surface-alt) hover:text-(--color-navy-900); }
 .perfil-menu a.active { @apply bg-(--color-surface-alt) font-semibold text-(--color-navy-900); }
 .perfil-stats { @apply mt-4 grid grid-cols-3 gap-2 border-t border-black/5 pt-4 text-center; }
 .perfil-content { @apply space-y-6; }
@@ -578,8 +615,8 @@ footer {
 .form-group.full { @apply sm:col-span-2; }
 .form-submit-mt { @apply mt-4; }
 .form-group { @apply mb-4; }
-.form-group label { @apply mb-1.5 block text-sm font-medium; }
-.form-group input,
+.form-group label:not(.modal-terminos) { @apply mb-1.5 block text-sm font-medium; }
+.form-group input:not([type="checkbox"]):not([type="radio"]),
 .form-group select,
 .form-group textarea {
   @apply w-full rounded-lg border border-black/10 px-3.5 py-2.5 text-sm outline-none focus:border-(--color-navy-500) focus:ring-2 focus:ring-(--color-navy-500)/20;
@@ -605,9 +642,9 @@ footer {
 /* ── Detalle de reserva (cliente + admin) ── */
 .left-column { @apply space-y-6; }
 .rdetalle-info-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
-.reservas-backbar { @apply container pt-6; }
+.reservas-backbar { @apply mx-auto w-full max-w-6xl px-5 pt-6; }
 .btn-back-reserva { @apply inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-navy-700) hover:text-(--color-gold-600); }
-.reservas-container { @apply container py-8; }
+.reservas-container { @apply mx-auto w-full max-w-6xl px-5 py-8; }
 .rdetalle-header { @apply mb-6 flex flex-wrap items-center justify-between gap-4; }
 .rdetalle-codigo { @apply block font-mono text-xs uppercase tracking-wide text-(--color-ink)/45; }
 .rdetalle-meta { @apply mt-1 flex items-center gap-1.5 text-sm text-(--color-ink)/60; }
@@ -671,16 +708,27 @@ footer {
 .input-file-custom { @apply w-full rounded-lg border border-dashed border-black/15 px-3.5 py-2.5 text-sm; }
 
 /* ── Notificaciones ── */
-.notif-page { @apply container py-8; }
+.notif-page { @apply mx-auto w-full max-w-6xl px-5 py-8; }
 .notif-header { @apply mb-6 flex flex-wrap items-center justify-between gap-3; }
 .notif-subtitle { @apply text-sm text-(--color-ink)/55; }
 .btn-marcar-todas { @apply inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3.5 py-2 text-sm font-medium transition hover:bg-(--color-surface-alt); }
 .notif-empty { @apply flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white px-6 py-16 text-center; }
 .notif-empty-icon { @apply mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-navy-500); }
 .notif-empty p { @apply text-sm text-(--color-ink)/55; }
-.notif-list { @apply flex flex-col gap-3; }
-.notif-card { @apply flex items-start gap-3 rounded-2xl border border-black/5 bg-white p-4 shadow-sm; }
+.notif-filters { @apply mb-4 flex flex-wrap gap-2; }
+.notif-filter-tab { @apply inline-flex items-center gap-1.5 rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-(--color-ink)/60 transition hover:bg-(--color-surface-alt); }
+.notif-filter-tab.is-active { @apply border-(--color-navy-600) bg-(--color-navy-600) text-white; }
+.notif-filter-count { @apply rounded-full bg-black/5 px-1.5 py-0.5 text-[11px] font-semibold; }
+.notif-filter-tab.is-active .notif-filter-count { @apply bg-white/20; }
+.notif-list { @apply flex flex-col gap-6; }
+.notif-group { @apply flex flex-col gap-3; }
+.notif-group-title { @apply px-1 text-xs font-semibold uppercase tracking-wide text-(--color-ink)/40; }
+.notif-list.solo-no-leidas .notif-card[data-leida="si"] { @apply hidden; }
+.notif-list.solo-no-leidas .notif-group:not(:has(.notif-card[data-leida="no"])) { @apply hidden; }
+.notif-card { @apply flex items-start gap-3 rounded-2xl border border-black/5 bg-white p-4 shadow-sm transition; }
 .notif-card.no-leida { @apply border-(--color-navy-500)/25 bg-(--color-navy-500)/[0.03]; }
+.notif-dot-slot { @apply flex w-2 shrink-0 items-start pt-2.5; }
+.notif-dot { @apply h-2 w-2 rounded-full bg-(--color-gold-500); }
 .notif-icon { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--color-surface-alt) text-(--color-ink)/60; }
 .notif-icon.notif-tipo-success { @apply bg-emerald-100 text-emerald-600; }
 .notif-icon.notif-tipo-warning { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
@@ -845,7 +893,14 @@ footer {
 .modal-overlay { @apply fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 p-4; }
 .modal-overlay.flex,
 .modal-overlay.is-open { @apply flex; }
-.modal-box { @apply max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl; }
+.modal-box {
+  @apply max-h-[90vh] w-full max-w-md scale-100 overflow-y-auto rounded-2xl bg-white p-6 opacity-100 shadow-2xl transition-all duration-200;
+}
+/* Entrada suave al abrir: sin esto el modal aparecía de golpe, el mismo
+   "brinco" brusco que se pidió eliminar de la navegación del perfil. */
+@starting-style {
+  .modal-overlay.is-open .modal-box { @apply scale-95 opacity-0; }
+}
 .modal-box--lg { @apply max-w-2xl; }
 .modal-box-header { @apply mb-4 flex items-center justify-between gap-3; }
 .modal-box-header h2 { @apply text-lg; }
@@ -917,7 +972,12 @@ footer {
 .btn-reservas-primary { @apply inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-(--color-navy-700) px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-(--color-navy-800); }
 
 /* ── Modal «Iniciar reserva» / «Agendar visita» (inmueble) ── */
-.modal-reserva-box { @apply max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl; }
+.modal-reserva-box {
+  @apply max-h-[90vh] w-full max-w-lg scale-100 overflow-y-auto rounded-2xl bg-white opacity-100 shadow-2xl transition-all duration-200;
+}
+@starting-style {
+  .modal-overlay.is-open .modal-reserva-box { @apply scale-95 opacity-0; }
+}
 .modal-reserva-header { @apply flex items-center justify-between gap-3 border-b border-black/5 p-5; }
 .modal-reserva-header h2 { @apply flex items-center gap-2 text-lg; }
 .modal-reserva-body { @apply p-5; }

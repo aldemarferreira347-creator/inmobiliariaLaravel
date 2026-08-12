@@ -56,6 +56,21 @@ class ContratoTest extends TestCase
         $this->assertSame(EstadoInmueble::Ocupado, $reserva->inmueble->refresh()->estado);
     }
 
+    public function test_el_valor_del_contrato_se_toma_de_la_reserva_y_no_del_formulario(): void
+    {
+        $reserva = $this->reservaConfirmada();
+        $reserva->forceFill(['monto_reserva' => 500_000])->save();
+
+        $datos = $this->datos($reserva);
+        $datos['valor_mensual'] = 9_999_999; // debe ignorarse
+
+        $this->actingAs(User::factory()->administrador()->create())
+            ->post(route('admin.contratos.store'), $datos)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('500000.00', Contrato::firstOrFail()->valor_mensual);
+    }
+
     public function test_no_se_emite_contrato_desde_una_reserva_sin_confirmar(): void
     {
         $reserva = Reserva::factory()->create();

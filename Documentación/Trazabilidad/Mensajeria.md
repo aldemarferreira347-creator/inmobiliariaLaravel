@@ -39,6 +39,18 @@ primera vez sobre un inmueble
 (`POST /inmuebles/{inmueble}/contactar` → `MensajeController::iniciar()` →
 `MensajeService::abrirConversacion()`), el sistema decide:
 
+**La ficha del inmueble incluye un formulario de contacto opcional**
+(tarjeta "Escríbele al asesor" en `inmuebles/show.blade.php`, visible solo
+para cliente/invitado, no para staff) con un `<textarea name="mensaje">`.
+Si el campo llega no vacío, `iniciar()` abre/reutiliza la conversación
+**y además** llama `MensajeService::enviar()` con ese texto antes de
+redirigir — el cliente cae directo en el hilo con su pregunta ya publicada,
+en vez de tener que escribirla de nuevo en la bandeja. El campo es
+`nullable`; si viene vacío (por ejemplo, alguien usa el botón corto
+"Contactar asesor" sin escribir nada), el comportamiento es idéntico al de
+siempre: solo abre/reutiliza el hilo, sin publicar ningún mensaje. Cubierto
+por `MensajeTest::test_el_formulario_de_contacto_de_la_ficha_envia_el_mensaje_de_una_vez`.
+
 1. Si el mismo cliente ya tuvo una conversación antes con **cualquier**
    asesor (sobre otro inmueble) y ese asesor sigue activo, se reutiliza —
    así no se parte la relación ya construida (`asesorPara()`, línea 104).

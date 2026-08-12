@@ -31,6 +31,7 @@ puede generar un contrato — hay que rehacer la operación desde cero.
 | Descarga del PDF | `app/Http/Controllers/DescargaController.php` + `app/Servicios/ArchivoPrivadoService.php` |
 | Comando de vencimiento automático | `app/Console/Commands/VencerContratos.php` |
 | Vistas | `resources/views/admin/contratos/{index,create,show}.blade.php` |
+| JS (muestra el valor de la reserva elegida) | `resources/js/contratos.js` |
 | Vista del cliente | `resources/views/perfil/mis-arriendos.blade.php` (ver `Documentación/Trazabilidad/Perfil-y-Favoritos.md` §6) |
 | Rutas | `routes/web.php` líneas 152-157 (panel), línea 76 (descarga, dentro del grupo `auth` general) |
 | Tests | `tests/Feature/ContratoTest.php` |
@@ -57,9 +58,8 @@ algo que se va a rechazar después.
 ### 3.2 El envío del formulario
 
 `POST /admin/contratos` → `StoreContratoRequest` (número de contrato lo
-genera el sistema, no se pide; sí se piden fecha de inicio, fecha de fin
-opcional y valor mensual) → `ContratoController::store()` →
-`ContratoService::crearDesdeReserva()`:
+genera el sistema, no se pide; se piden fecha de inicio y fecha de fin
+opcional) → `ContratoController::store()` → `ContratoService::crearDesdeReserva()`:
 
 1. **`asegurarQueAdmiteContrato()`** — repite, del lado del servicio, las
    mismas tres condiciones que ya filtró la pantalla (reserva confirmada,
@@ -74,6 +74,22 @@ opcional y valor mensual) → `ContratoController::store()` →
    lo hace, mirar `Documentación/Trazabilidad/Ventas.md`, pero por un
    camino totalmente distinto).
 3. Notifica al cliente por sistema y por correo.
+
+**El valor del contrato no lo escribe el administrador — se toma de la
+reserva.** `valor_mensual` se guarda como `$reserva->monto_reserva`, el
+mismo monto que `ReservaService::montoDeReserva()` ya fijó al crear la
+reserva según el precio real del inmueble (venta o arriendo, según la
+modalidad que eligió el cliente — ver
+`Documentación/Trazabilidad/Reservas-y-Pagos.md` §3). El formulario
+(`admin/contratos/create.blade.php`) solo **muestra** ese monto en un campo
+de solo lectura (`data-reserva-monto-display`, actualizado por
+`resources/js/contratos.js` según la reserva elegida en el `<select>`) —
+es informativo, no editable. `StoreContratoRequest` ya no valida
+`valor_mensual` porque el formulario no lo envía. Mismo principio que ya
+aplicaba en Reservas ("el monto nunca lo escribe quien paga"), aplicado
+acá para que el administrador tampoco pueda escribir un valor distinto al
+que el cliente realmente reservó. Cubierto por
+`ContratoTest::test_el_valor_del_contrato_se_toma_de_la_reserva_y_no_del_formulario`.
 
 ## 4. Subir el PDF firmado
 
@@ -134,3 +150,4 @@ corrigió en esta versión.
 | El PDF del contrato no se puede descargar | Primero revisar la policy (`ContratoPolicy::descargar`), no el archivo — es más común un problema de permisos que de almacenamiento | `app/Politicas/ContratoPolicy.php` |
 | El inmueble sigue "Ocupado" después de que el contrato venció/se rescindió | Confirmar que el cron real corre `reservas:expirar`/`contratos:vencer` (para vencimiento automático) o que se llamó `rescindir()` (no un `update()` directo a la tabla) | `Documentación/Trazabilidad/Trazabilidad-Sistema.md` §2 |
 | Un contrato nuevo no aparece como opción para una reserva que sí está confirmada | Puede estar fuera del plazo de 7 días — revisar `reservasElegibles()` en el controller, que filtra antes de mostrar el formulario | `app/Http/Controllers/Admin/ContratoController.php` línea 84 |
+| El valor del contrato emitido no coincide con lo que se veía en el formulario | No debería pasar — el campo es de solo lectura y meramente informativo, el servidor usa `$reserva->monto_reserva` sin importar qué haya en el POST. Si el monto se ve "mal" desde el origen, el problema está en `ReservaService::montoDeReserva()`, no acá | `app/Servicios/ContratoService.php::crearDesdeReserva()` |

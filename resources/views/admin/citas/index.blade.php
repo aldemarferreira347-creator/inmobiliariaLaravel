@@ -22,7 +22,7 @@
             </div>
         @else
             <div class="table-responsive">
-                <table class="panel-table">
+                <table class="panel-table" data-enhance-table data-export-name="citas-sin-asignar">
                     <thead>
                         <tr>
                             <th>Fecha</th>
@@ -95,7 +95,8 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="panel-table">
+                    <table class="panel-table" data-enhance-table
+                        data-export-name="citas-{{ str($asesor->nombre)->slug() }}">
                         <thead>
                             <tr>
                                 <th>Fecha</th>

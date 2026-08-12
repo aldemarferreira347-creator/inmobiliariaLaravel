@@ -26,6 +26,7 @@ documento explica el mecanismo compartido, no cada mensaje puntual.
 | Validación del envío manual | `app/Http/Requests/Admin/EnviarNotificacionRequest.php` |
 | Correo genérico que acompaña a una notificación | `app/Mail/Aviso.php`, plantilla `resources/views/emails/aviso.blade.php` |
 | Vistas | `resources/views/notificaciones/index.blade.php`, `resources/views/admin/notificaciones/create.blade.php` |
+| JS del filtro (Todas / No leídas) | `resources/js/notificaciones.js` |
 | Rutas | `routes/web.php` líneas 79-82 (usuario), 159-160 (admin) |
 | Tests | `tests/Feature/NotificacionTest.php` |
 
@@ -69,16 +70,33 @@ in-app).
 ## 4. Ver y marcar como leídas (del lado del usuario)
 
 `GET /notificaciones` → `NotificacionController::index()` — lista las
-últimas 100 notificaciones del usuario logueado. `PATCH /notificaciones/{notificacion}`
-→ `marcarLeida()`: antes de tocar nada,
-`abort_unless($notificacion->usuario_id === $request->user()->id, 403)` —
-esto es lo único que impide que alguien marque como leída una notificación
-ajena adivinando el ID en la URL (no hay una Policy dedicada para este
-modelo, es un chequeo manual inline — ver
+últimas 100 notificaciones del usuario logueado. La vista las agrupa por
+antigüedad (Hoy / Ayer / Esta semana / Anteriores, agrupación hecha en el
+`@php` de la propia vista, no en el controller) y trae dos pestañas
+("Todas" / "No leídas") resueltas en el navegador sin recargar
+(`resources/js/notificaciones.js`, filtra con clases CSS y el selector
+`:has()`) — el controller sigue devolviendo la misma lista plana de
+siempre, el agrupado y el filtro son puramente de presentación.
+
+`PATCH /notificaciones/{notificacion}` → `marcarLeida()`: antes de tocar
+nada, `abort_unless($notificacion->usuario_id === $request->user()->id, 403)`
+— esto es lo único que impide que alguien marque como leída una
+notificación ajena adivinando el ID en la URL (no hay una Policy dedicada
+para este modelo, es un chequeo manual inline — ver
 `Documentación/Trazabilidad/Trazabilidad-Sistema.md` §6 sobre esta
 estrategia mixta de autorización).
 
-`PATCH /notificaciones/leidas` → `marcarTodas()` marca de una sola vez
+**Marcar como leída no actualiza `leida_en`: elimina la fila.**
+`marcarLeida()` y `marcarTodas()` llaman `->delete()` en vez de
+`->update(['leida_en' => now()])` — es una decisión de producto (HU-15): el
+centro de notificaciones es una bandeja de pendientes, no un historial
+permanente, así que lo leído desaparece de la lista en vez de quedarse
+tachado. **Importante si se retoca este módulo:** el scope `sinLeer()`
+sigue existiendo y sigue siendo válido (filtra `whereNull('leida_en')`),
+pero en la práctica una notificación leída ya no está en la tabla para que
+ese scope la excluya — no lo confundas con código muerto.
+
+`PATCH /notificaciones/leidas` → `marcarTodas()` elimina de una sola vez
 todas las `sinLeer()` (scope del modelo) del usuario.
 
 ## 5. El enlace "ir al origen" de una notificación
@@ -122,3 +140,4 @@ sondear la barra de navegación.
 | El clic en una notificación no lleva a ningún lado | `referencia_tipo` no coincide con ninguno de los 4 casos de `getEnlaceAttribute()`, o `referencia_id` apunta a un registro que ya no existe | `app/Models/Notificacion.php::getEnlaceAttribute()` |
 | Un usuario recibe notificaciones que no le corresponden | Revisar qué método del servicio se usó (`paraRol`/`paraStaff`/`paraTodos` envían a grupos completos — confirmar que el grupo elegido es el correcto) | El módulo que originó la notificación, no `NotificacionService` en sí |
 | El correo nunca llega aunque `conCorreo: true` esté puesto | El `try/catch` de `enviarCorreo()` silencia fallos de envío — revisar `storage/logs/laravel.log` (ahí va el `report($e)`) y la configuración `MAIL_*` en `.env` | `app/Servicios/NotificacionService.php::enviarCorreo()` |
+| Una notificación "desaparece sola" al marcarla como leída | No es un bug — es el comportamiento esperado desde esta pasada, `marcarLeida()`/`marcarTodas()` eliminan la fila en vez de solo marcarla | `app/Http/Controllers/NotificacionController.php` |

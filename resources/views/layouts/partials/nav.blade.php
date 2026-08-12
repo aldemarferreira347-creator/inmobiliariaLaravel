@@ -45,8 +45,9 @@
 
                     <li>
                         <a href="{{ route('notificaciones.index') }}"
-                            @class(['active' => request()->routeIs('notificaciones.*')])>
-                            Notificaciones
+                            @class(['nav-link-icon', 'active' => request()->routeIs('notificaciones.*')])
+                            aria-label="Notificaciones" title="Notificaciones">
+                            <x-icon name="bell" class="h-5 w-5" />
                             <span class="nav-badge hidden" data-badge-notificaciones>0</span>
                         </a>
                     </li>

@@ -4,12 +4,17 @@
 > evaluación o cuando algo se rompe. La trazabilidad detallada (qué archivo
 > toca a cuál) vive en un documento aparte: [`Documentación/Trazabilidad/Trazabilidad-Sistema.md`](../Trazabilidad/Trazabilidad-Sistema.md).
 
-**Última auditoría:** 2026-08-07. **Estado:** sano.
-`php artisan test` → **116/116 tests pasan**. Cero rutas rotas, cero vistas
-rotas o huérfanas, cero código muerto real. Se corrigieron en esta pasada: la
-autorización por rol (§2.1), 2 íconos con nombre equivocado (§3), un symlink
-de almacenamiento roto que causaba 404 en imágenes reales (§4.1), y el
-catálogo de demostración sin imágenes propias (§4.2).
+**Última auditoría:** 2026-08-07. **Última revisión funcional:** 2026-08-12.
+**Estado:** sano. `php artisan test` → **119/119 tests pasan** (116 de la
+auditoría original + 3 agregados el 2026-08-12, ver §6). Cero rutas rotas,
+cero vistas rotas o huérfanas, cero código muerto real. Se corrigieron en la
+auditoría original: la autorización por rol (§2.1), 2 íconos con nombre
+equivocado (§3), un symlink de almacenamiento roto que causaba 404 en
+imágenes reales (§4.1), y el catálogo de demostración sin imágenes propias
+(§4.2). La revisión del 2026-08-12 (§6) corrigió, entre otras cosas, una
+clase `.container` que no centraba el contenido en varias vistas del lado
+cliente y un `input[type=checkbox]` que se deformaba en los formularios del
+panel — ambos con causa raíz en CSS compartido, no en una vista puntual.
 
 ---
 
@@ -198,7 +203,118 @@ en local), ni imágenes rotas después de las dos correcciones de arriba.
   tabla `usuario` (no `users`) — el nombre del archivo es el de Laravel por
   defecto y puede confundir a quien busque ahí la tabla `usuario`.
 
-## 6. Comandos útiles para depurar
+## 6. Revisión funcional del 2026-08-12
+
+Pasada centrada en vistas mal alineadas/desorganizadas reportadas en uso
+real, más un pedido explícito de que el perfil nunca navegue a otra vista.
+No fue una auditoría de código automatizada como la de §1-§5 — fue
+navegación real de la app (login como cliente y como administrador) más
+lectura de código, con `php artisan test` como red de seguridad antes y
+después de cada cambio de backend.
+
+### 6.1 `.container` no centraba el contenido en reservas y notificaciones (ALTO — corregido)
+
+**Síntoma reportado:** varias vistas se veían "corridas hacia un lado", con
+todo el contenido pegado al borde izquierdo y un hueco enorme a la derecha
+en pantallas anchas.
+
+**Causa real:** en Tailwind CSS v4, `@apply container` dentro de una clase
+propia **no reutiliza** una clase `.container` definida a mano con el mismo
+nombre — resuelve al utility "container" nativo de Tailwind, que no trae
+`margin: auto` y usa sus propios saltos de ancho máximo por breakpoint. El
+proyecto define su propio `.container { mx-auto max-w-6xl px-5 }`
+(`resources/css/app.css` línea 53), pero tres clases lo reutilizaban vía
+`@apply container ...` en vez de repetir las utilidades — exactamente el
+patrón que Tailwind v4 no resuelve como uno esperaría:
+`.reservas-backbar`, `.reservas-container` (detalle de una reserva) y
+`.notif-page` (centro de notificaciones).
+
+**Corregido:** las tres clases pasaron de `@apply container ...` a repetir
+las utilidades explícitas (`@apply mx-auto w-full max-w-6xl px-5 ...`),
+igual que ya hacía `.detalle-page`. Verificado midiendo en el navegador que
+el margen izquierdo y derecho del contenido quedan iguales a 1920px de
+ancho. **Si en el futuro alguien necesita otra clase de ancho constante,
+no usar `@apply container` — copiar el patrón de `.detalle-page` o de
+`.container` mismo.**
+
+### 6.2 Checkbox deformado en formularios del panel (MEDIO — corregido)
+
+**Síntoma reportado:** en "Enviar notificación", el checkbox "Enviar
+también por correo electrónico" se veía como una línea delgada centrada en
+vez de un cuadrado normal, con la etiqueta cayendo a la línea siguiente.
+
+**Causa real:** la regla genérica `.form-group input { width:100%;
+border; padding; ... }` (pensada para `<input type="text">`) no excluía
+`type="checkbox"`/`type="radio"`, así que cualquier checkbox dentro de un
+`.form-group` heredaba `width: 100%` — el navegador lo dibuja como una
+barra casi invisible en vez de un cuadrado. Encontrado en
+`resources/views/admin/notificaciones/create.blade.php`, pero la causa es
+compartida: cualquier otro checkbox futuro dentro de un `.form-group` iba
+a tener el mismo problema.
+
+**Corregido:** `.form-group input:not([type="checkbox"]):not([type="radio"])`
+— fix a nivel de CSS compartido, no del formulario puntual. De paso se
+corrigió que `.form-group label { display:block }` pisaba el `display:flex`
+de `.modal-terminos` (la clase que alinea checkbox + texto en una fila) por
+mayor especificidad; ahora `.form-group label:not(.modal-terminos)`.
+
+### 6.3 Perfil: contraseña / arriendos / compras / tarjetas ahora son modales
+
+Ver el detalle completo en
+`Documentación/Trazabilidad/Perfil-y-Favoritos.md` §3.1. Resumen: antes
+cada sección era una vista aparte con su propia URL; ahora las cuatro son
+modales sobre `/perfil`, con `PerfilController::edit()` cargando todos los
+datos de una sola vez. Las rutas y vistas viejas se dejaron intactas por
+compatibilidad, pero ya no las enlaza la interfaz.
+
+De paso se agregó una transición corta de apertura/cierre
+(`opacity`/`scale` con `@starting-style`) a la clase genérica de modales
+(`.modal-box`, `.modal-reserva-box`) — beneficia a todos los modales del
+sistema, no solo a los de perfil.
+
+### 6.4 Notificaciones: marcar como leída ahora elimina, y la vista se rediseñó
+
+`NotificacionController::marcarLeida()`/`marcarTodas()` pasaron de
+`->update(['leida_en' => now()])` a `->delete()` — decisión de producto
+(HU-15): el centro de notificaciones es una bandeja de pendientes, no un
+historial. Ver `Documentación/Trazabilidad/Notificaciones.md` §4 para el
+detalle y la advertencia sobre el scope `sinLeer()`.
+
+La vista además se agrupó por antigüedad (Hoy/Ayer/Esta semana/Anteriores)
+y se le agregaron pestañas "Todas"/"No leídas" resueltas en el navegador
+(`resources/js/notificaciones.js`), sin tocar el controller.
+
+### 6.5 Contratos: el valor ya no lo escribe el administrador
+
+`ContratoService::crearDesdeReserva()` ahora guarda
+`valor_mensual = $reserva->monto_reserva` en vez de un valor libre del
+formulario — mismo principio que ya aplicaba Reservas ("el monto nunca lo
+escribe quien paga"). Ver `Documentación/Trazabilidad/Contratos.md` §3.2.
+
+### 6.6 Mensajería: la ficha del inmueble ahora tiene un formulario de contacto real
+
+`MensajeController::iniciar()` acepta un campo `mensaje` opcional y, si
+viene, publica ese texto en la conversación antes de redirigir — antes solo
+abría un hilo vacío. Ver `Documentación/Trazabilidad/Mensajeria.md` §3.
+
+### 6.7 Encabezado de ancho completo
+
+`header .container` se independizó del `.container` centrado del resto del
+sitio (`max-w-none px-6`) para que el logo y las acciones (campana, perfil,
+cerrar sesión) queden pegados a los bordes de la ventana — decisión visual
+explícita, no aplica al resto de las vistas.
+
+### 6.8 Tests agregados
+
+Tres tests nuevos, uno por cada cambio de comportamiento del backend
+(§6.3-§6.6 no tocan backend salvo lo ya cubierto):
+
+- `ContratoTest::test_el_valor_del_contrato_se_toma_de_la_reserva_y_no_del_formulario`
+- `NotificacionTest::test_marcar_una_notificacion_como_leida_la_elimina`
+  (más una aserción nueva en `test_se_marcan_todas_como_leidas`)
+- `MensajeTest::test_el_formulario_de_contacto_de_la_ficha_envia_el_mensaje_de_una_vez`
+
+## 7. Comandos útiles para depurar
 
 ```bash
 php artisan route:list                    # todas las rutas, con nombre y controller

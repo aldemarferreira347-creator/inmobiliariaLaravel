@@ -32,16 +32,30 @@ export function iniciarTarjetas() {
     const formulario = document.getElementById('form-tarjeta-nueva');
     if (!contenedor || !formulario || typeof window.Stripe !== 'function') return;
 
-    const stripe = window.Stripe(formulario.dataset.stripeKey);
-    const elements = stripe.elements();
-    const cardElement = elements.create('card');
-    cardElement.mount('#stripe-card-element');
-
     const errores = document.getElementById('stripe-card-errors');
-    cardElement.on('change', (evento) => mostrarError(errores, evento.error?.message));
+
+    // El formulario vive dentro de un modal oculto por defecto: montar el
+    // Element de Stripe ahí lo deja mal renderizado, así que se monta recién
+    // cuando el modal se abre (una sola vez).
+    let cardElement = null;
+
+    function montarSiHaceFalta() {
+        if (cardElement) return;
+        const stripe = window.Stripe(formulario.dataset.stripeKey);
+        const elements = stripe.elements();
+        cardElement = elements.create('card');
+        cardElement.mount('#stripe-card-element');
+        cardElement.on('change', (evento) => mostrarError(errores, evento.error?.message));
+    }
+
+    document.querySelectorAll('[data-modal-abrir="modal-tarjetas"]')
+        .forEach((boton) => boton.addEventListener('click', montarSiHaceFalta));
+
+    if (formulario.closest('.modal-overlay')?.classList.contains('is-open')) montarSiHaceFalta();
 
     formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
+        if (!cardElement) return;
         mostrarError(errores, '');
 
         const boton = formulario.querySelector('button[type="submit"]');

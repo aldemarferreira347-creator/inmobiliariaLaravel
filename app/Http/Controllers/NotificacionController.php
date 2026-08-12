@@ -26,21 +26,21 @@ class NotificacionController extends Controller
         ]);
     }
 
-    /** Marca una notificación propia como leída. */
+    /** Marca una notificación propia como leída y la retira de la lista. */
     // Filtrar por usuario evita que nadie marque notificaciones ajenas
     public function marcarLeida(Request $request, Notificacion $notificacion): RedirectResponse
     {
         abort_unless($notificacion->usuario_id === $request->user()->id, 403);
 
-        $notificacion->update(['leida_en' => now()]);
+        $notificacion->delete();
 
         return back();
     }
 
-    /** Marca todas las notificaciones pendientes del usuario autenticado como leídas. */
+    /** Marca todas las notificaciones pendientes del usuario autenticado como leídas y las retira de la lista. */
     public function marcarTodas(Request $request): RedirectResponse
     {
-        $request->user()->notificaciones()->sinLeer()->update(['leida_en' => now()]);
+        $request->user()->notificaciones()->sinLeer()->delete();
 
         return back()->with(['mensaje' => 'Todas tus notificaciones quedaron marcadas como leídas.', 'tipo' => 'success']);
     }

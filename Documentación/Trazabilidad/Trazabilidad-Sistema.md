@@ -56,8 +56,8 @@ routes/
   console.php     scheduler: reservas:expirar y contratos:vencer, cada hora
 bootstrap/app.php ← aquí se registran los middleware (no hay Kernel.php, es Laravel 11+)
 resources/
-  views/          73 archivos Blade. layouts/app.blade.php es el layout raíz (@vite vive solo ahí)
-  js/             app.js importa los otros 9 módulos JS — no hay <script> sueltos
+  views/          75 archivos Blade. layouts/app.blade.php es el layout raíz (@vite vive solo ahí)
+  js/             app.js importa los otros 11 módulos JS — no hay <script> sueltos
 ```
 
 **Los namespaces reales están en español.** Si buscás `app/Enums`,
@@ -110,7 +110,7 @@ donde vive la lógica real.
 |---|---|---|---|---|---|---|---|
 | Catálogo público (HU-01/02) | `Inmueble`, `ImagenInmueble` | `InmuebleController` | `/`, `/inmuebles*` | `inmuebles/inicio,index,show` | `ImagenInmuebleService` | `InmueblePolicy` | `CatalogoTest` |
 | Auth (HU-03/05/24) | `User`, `Role` | `Auth/*` (5 controllers) | `routes/auth.php` | `auth/*` | — | `UserPolicy` | `Auth/AutenticacionTest`, `Auth/RegistroTest` |
-| Perfil (HU-25) | `User` | `PerfilController` | `/perfil*` | `perfil/edit,cambiar-password` | `AvatarService` | `UserPolicy` | `PerfilTest` |
+| Perfil (HU-25) | `User` | `PerfilController` | `/perfil*` | `perfil/edit` (contraseña/arriendos/compras/tarjetas son modales de esa misma vista, ver `Perfil-y-Favoritos.md` §3.1) | `AvatarService`, `StripeCardService` | `UserPolicy` | `PerfilTest` |
 | Favoritos (HU-18) | `Inmueble` (pivot `favorito`) | `FavoritoController` | `/favoritos*` | `perfil/favoritos` | — | `InmueblePolicy` | — |
 | Reservas + Pago (HU-07/20/23) | `Reserva`, `Pago`, `MetodoPagoGuardado` | `ReservaController`, `Admin\ReservaController`, `MetodoPagoController`, `StripeWebhookController` | `/mis-reservas*`, `/admin/reservas*`, `/perfil/tarjetas*`, `POST /stripe/webhook` | `reservas/*` | `ReservaService`, `PagoService`, `StripeCardService` | `ReservaPolicy` | `ReservaTest`, `PagoTest` |
 | Contratos (HU-17/19) | `Contrato` | `Admin\ContratoController`, `DescargaController` | `/admin/contratos*`, `/contratos/{c}/descargar` | `admin/contratos/*` | `ContratoService`, `ArchivoPrivadoService` | `ContratoPolicy` | `ContratoTest` |

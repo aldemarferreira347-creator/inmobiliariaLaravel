@@ -38,7 +38,10 @@ class ContratoService
                 'numero_contrato' => Contrato::generarNumero($reserva),
                 'fecha_inicio' => $datos['fecha_inicio'],
                 'fecha_fin' => $datos['fecha_fin'] ?? null,
-                'valor_mensual' => $datos['valor_mensual'],
+                // El valor nunca lo escribe el administrador a mano: es el mismo
+                // monto que ya quedó fijado en la reserva (precio de venta o de
+                // arriendo del inmueble, según la modalidad que eligió el cliente).
+                'valor_mensual' => $reserva->monto_reserva,
             ]);
 
             // Un contrato vigente ocupa el inmueble (HU-17.1)

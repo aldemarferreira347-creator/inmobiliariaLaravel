@@ -42,18 +42,18 @@
         <a href="{{ route('reservas.index') }}" @class(['active' => request()->routeIs('reservas.*')])>
             <x-icon name="clipboard-list" class="h-4 w-4" /> Mis reservas
         </a>
-        <a href="{{ route('perfil.arriendos') }}" @class(['active' => request()->routeIs('perfil.arriendos')])>
+        <button type="button" data-modal-abrir="modal-arriendos">
             <x-icon name="key" class="h-4 w-4" /> Mis arriendos
-        </a>
-        <a href="{{ route('perfil.compras') }}" @class(['active' => request()->routeIs('perfil.compras')])>
+        </button>
+        <button type="button" data-modal-abrir="modal-compras">
             <x-icon name="tag" class="h-4 w-4" /> Mis compras
-        </a>
+        </button>
         <a href="{{ route('citas.index') }}" @class(['active' => request()->routeIs('citas.*')])>
             <x-icon name="calendar" class="h-4 w-4" /> Mis citas
         </a>
-        <a href="{{ route('perfil.tarjetas.index') }}" @class(['active' => request()->routeIs('perfil.tarjetas.*')])>
+        <button type="button" data-modal-abrir="modal-tarjetas">
             <x-icon name="credit-card" class="h-4 w-4" /> Mis tarjetas
-        </a>
+        </button>
         <a href="{{ route('favoritos.index') }}" @class(['active' => request()->routeIs('favoritos.*')])>
             <x-icon name="star" class="h-4 w-4" /> Mis favoritos
         </a>
@@ -65,9 +65,9 @@
             <x-icon name="bell" class="h-4 w-4" /> Notificaciones
             <span class="nav-badge hidden" data-badge-notificaciones>0</span>
         </a>
-        <a href="{{ route('password.edit') }}" @class(['active' => request()->routeIs('password.edit')])>
+        <button type="button" data-modal-abrir="modal-password">
             <x-icon name="lock" class="h-4 w-4" /> Cambiar contraseña
-        </a>
+        </button>
 
         @if ($usuario->esAdministrador())
             <a href="{{ route('admin.inmuebles.index') }}" class="panel-link">

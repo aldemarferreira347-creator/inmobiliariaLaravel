@@ -2,6 +2,8 @@
 
 @section('titulo', 'Mensajes')
 
+@section('sin_footer', true)
+
 @section('contenido')
     <div class="page-hero">
         <span class="page-hero-badge"><x-icon name="message-square" class="h-3.5 w-3.5" /> Mi cuenta</span>

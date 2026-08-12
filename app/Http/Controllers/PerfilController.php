@@ -7,6 +7,7 @@ use App\Enumerados\ModalidadInmueble;
 use App\Http\Requests\FotoPerfilRequest;
 use App\Http\Requests\PerfilUpdateRequest;
 use App\Servicios\AvatarService;
+use App\Servicios\StripeCardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -20,14 +21,37 @@ use Illuminate\View\View;
  */
 class PerfilController extends Controller
 {
-    public function __construct(private readonly AvatarService $avatares) {}
+    public function __construct(
+        private readonly AvatarService $avatares,
+        private readonly StripeCardService $tarjetas,
+    ) {}
 
-    /** Muestra el formulario de edición del perfil del usuario autenticado. */
+    /**
+     * Muestra el perfil del usuario autenticado.
+     *
+     * Todas las secciones de la cuenta (contraseña, arriendos, compras,
+     * tarjetas) se resuelven en esta única vista porque se abren como
+     * modales sobre la misma página, nunca como una vista aparte.
+     */
     public function edit(Request $request): View
     {
+        $usuario = $request->user();
+
         return view('perfil.edit', [
-            'usuario' => $request->user(),
-            'totalFavoritos' => $request->user()->favoritos()->count(),
+            'usuario' => $usuario,
+            'totalFavoritos' => $usuario->favoritos()->count(),
+            'reservas' => $usuario->reservas()
+                ->where('estado', EstadoReserva::Confirmada)
+                ->whereHas('inmueble', fn ($q) => $q->whereIn('modalidad', [ModalidadInmueble::Arriendo, ModalidadInmueble::Ambos]))
+                ->with('inmueble', 'contrato')
+                ->recientes()
+                ->get(),
+            'ventas' => $usuario->ventas()
+                ->with('inmueble', 'asesor')
+                ->latest('fecha_venta')
+                ->get(),
+            'tarjetasGuardadas' => $this->tarjetas->listar($usuario),
+            'stripeKey' => config('services.stripe.key'),
         ]);
     }
 

@@ -6,6 +6,7 @@
     $imagenes = $inmueble->imagenes;
     $precioPrincipal = collect($inmueble->precios)->firstWhere('tipo', '!=', 'consultar') ?? $inmueble->precios[0];
     $consultaMapa = urlencode("{$inmueble->direccion}, {$inmueble->barrio}, {$inmueble->ciudad}, Colombia");
+    $esClienteOInvitado = ! auth()->check() || auth()->user()->esCliente();
 @endphp
 
 @section('contenido')
@@ -108,55 +109,57 @@
                     </div>
                 @endforeach
 
-                @auth
-                    @if (auth()->user()->esCliente())
-                        <form method="POST" action="{{ route('mensajes.iniciar', $inmueble) }}">
-                            @csrf
-                            <button type="submit" class="btn-contactar-asesor">
-                                <x-icon name="message-square" class="h-5 w-5" /> Contactar asesor
-                            </button>
-                        </form>
-
-                        @if ($inmueble->estado !== \App\Enumerados\EstadoInmueble::Ocupado)
-                            @can('create', \App\Models\Cita::class)
-                                <button type="button" class="btn-contactar-asesor" data-modal-abrir="modal-cita">
-                                    <x-icon name="calendar" class="h-5 w-5" /> Agendar visita
-                                </button>
-                            @endcan
-                        @endif
-                    @endif
-                @else
-                    <a href="{{ route('login') }}" class="btn-contactar-asesor">
-                        <x-icon name="message-square" class="h-5 w-5" /> Contactar asesor
-                    </a>
-                @endauth
-
-                @if ($inmueble->estado->esReservable())
-                    <div class="reserva-cta-wrap">
-                        <div class="reserva-cta-divider"><span>o</span></div>
-
+                @if ($esClienteOInvitado)
+                    <div class="detalle-acciones-primarias">
                         @auth
-                            @can('create', \App\Models\Reserva::class)
-                                <button type="button" class="btn-reservar-inmueble" data-modal-abrir="modal-reserva">
-                                    <x-icon name="lock" class="h-5 w-5" /> Reservar este inmueble
+                            <form method="POST" action="{{ route('mensajes.iniciar', $inmueble) }}">
+                                @csrf
+                                <button type="submit" class="btn-contactar-asesor">
+                                    <x-icon name="message-square" class="h-5 w-5" /> Contactar asesor
                                 </button>
-                                <p class="reserva-cta-hint">
-                                    Bloquea el inmueble durante {{ \App\Models\Reserva::HORAS_PARA_PAGAR }} h mientras
-                                    completas el pago.
-                                </p>
-                            @endcan
+                            </form>
+
+                            @if ($inmueble->estado !== \App\Enumerados\EstadoInmueble::Ocupado)
+                                @can('create', \App\Models\Cita::class)
+                                    <button type="button" class="btn-agendar-visita" data-modal-abrir="modal-cita">
+                                        <x-icon name="calendar" class="h-5 w-5" /> Agendar visita
+                                    </button>
+                                @endcan
+                            @endif
                         @else
-                            <a href="{{ route('login') }}" class="btn-reservar-inmueble btn-reservar--login">
-                                <x-icon name="key" class="h-5 w-5" /> Inicia sesión para reservar
+                            <a href="{{ route('login') }}" class="btn-contactar-asesor">
+                                <x-icon name="message-square" class="h-5 w-5" /> Contactar asesor
                             </a>
-                            <p class="reserva-cta-hint">Necesitas una cuenta para iniciar una reserva.</p>
                         @endauth
                     </div>
-                @else
-                    <div class="reserva-no-disponible">
-                        <x-icon name="home" class="h-4 w-4" />
-                        Este inmueble se encuentra actualmente {{ mb_strtolower($inmueble->estado->etiqueta()) }}.
-                    </div>
+
+                    @if ($inmueble->estado->esReservable())
+                        <div class="reserva-cta-wrap">
+                            <div class="reserva-cta-divider"><span>o</span></div>
+
+                            @auth
+                                @can('create', \App\Models\Reserva::class)
+                                    <button type="button" class="btn-reservar-inmueble" data-modal-abrir="modal-reserva">
+                                        <x-icon name="lock" class="h-5 w-5" /> Reservar este inmueble
+                                    </button>
+                                    <p class="reserva-cta-hint">
+                                        Bloquea el inmueble durante {{ \App\Models\Reserva::HORAS_PARA_PAGAR }} h
+                                        mientras completas el pago.
+                                    </p>
+                                @endcan
+                            @else
+                                <a href="{{ route('login') }}" class="btn-reservar-inmueble btn-reservar--login">
+                                    <x-icon name="key" class="h-5 w-5" /> Inicia sesión para reservar
+                                </a>
+                                <p class="reserva-cta-hint">Necesitas una cuenta para iniciar una reserva.</p>
+                            @endauth
+                        </div>
+                    @else
+                        <div class="reserva-no-disponible">
+                            <x-icon name="home" class="h-4 w-4" />
+                            Este inmueble se encuentra actualmente {{ mb_strtolower($inmueble->estado->etiqueta()) }}.
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>
@@ -225,6 +228,35 @@
             </div>
 
             <div class="right-column">
+                @if ($esClienteOInvitado)
+                    <div class="contact-form-card">
+                        <h2><x-icon name="message-square" class="h-5 w-5" /> Escríbele al asesor</h2>
+                        <p class="form-subtitle">Cuéntale qué te interesa de este inmueble y te responderá por el chat.</p>
+
+                        @auth
+                            <form method="POST" action="{{ route('mensajes.iniciar', $inmueble) }}">
+                                @csrf
+                                <div class="form-group">
+                                    <label for="mensaje-contacto">Tu mensaje</label>
+                                    <textarea id="mensaje-contacto" name="mensaje" rows="4" maxlength="2000"
+                                        placeholder="Ej: ¿Sigue disponible? Me gustaría agendar una visita.">{{ old('mensaje') }}</textarea>
+                                    @error('mensaje')
+                                        <span class="error-text">{{ $message }}</span>
+                                    @enderror
+                                </div>
+
+                                <button type="submit" class="btn-contactar-asesor">
+                                    <x-icon name="send" class="h-5 w-5" /> Enviar mensaje
+                                </button>
+                            </form>
+                        @else
+                            <a href="{{ route('login') }}" class="btn-contactar-asesor">
+                                <x-icon name="log-in" class="h-5 w-5" /> Inicia sesión para escribir
+                            </a>
+                        @endauth
+                    </div>
+                @endif
+
                 <div class="contact-form-card">
                     <h2>Ficha del inmueble</h2>
                     <p class="form-subtitle">Datos registrados en el sistema</p>

@@ -8,7 +8,3 @@
 <a href="{{ route('asesor.ventas.index') }}" @class(['active' => request()->routeIs('asesor.ventas.*')])>
     <x-icon name="dollar-sign" class="nav-icon" /> Mis ventas
 </a>
-<a href="{{ route('notificaciones.index') }}" @class(['active' => request()->routeIs('notificaciones.*')])>
-    <x-icon name="bell" class="nav-icon" /> Notificaciones
-    <span class="nav-badge hidden" data-badge-notificaciones>0</span>
-</a>

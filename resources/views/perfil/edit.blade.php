@@ -37,9 +37,9 @@
                         <div class="details-header">
                             <h3><x-icon name="user" class="h-5 w-5" /> Información personal</h3>
                             <div class="flex-row-center-gap10">
-                                <a href="{{ route('password.edit') }}" class="btn-panel-edit">
+                                <button type="button" class="btn-panel-edit" data-modal-abrir="modal-password">
                                     <x-icon name="lock" class="h-4 w-4" /> Cambiar contraseña
-                                </a>
+                                </button>
                                 <button type="button" class="btn-panel-edit" data-perfil-editar>
                                     <x-icon name="pencil" class="h-4 w-4" /> Editar
                                 </button>
@@ -81,7 +81,7 @@
                         </div>
 
                         <form id="form-editar" method="POST" action="{{ route('perfil.update') }}" class="hidden"
-                            data-abierto="{{ $errors->any() ? 'si' : 'no' }}">
+                            data-abierto="{{ $errors->hasAny(['nombre', 'telefono', 'fecha_nacimiento', 'ciudad', 'direccion']) ? 'si' : 'no' }}">
                             @csrf
                             @method('PATCH')
 
@@ -181,4 +181,14 @@
             </div>
         </div>
     </section>
+
+    {{-- Secciones de la cuenta abiertas como modal: nunca navegan a otra vista --}}
+    @include('perfil.partials.modal-password')
+    @include('perfil.partials.modal-arriendos')
+    @include('perfil.partials.modal-compras')
+    @include('perfil.partials.modal-tarjetas')
+
+    @push('scripts')
+        <script src="https://js.stripe.com/v3/"></script>
+    @endpush
 @endsection

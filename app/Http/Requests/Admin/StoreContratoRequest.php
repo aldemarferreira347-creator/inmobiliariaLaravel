@@ -20,7 +20,8 @@ class StoreContratoRequest extends FormRequest
             'fecha_inicio' => ['required', 'date'],
             // Dejarla vacía significa contrato indefinido
             'fecha_fin' => ['nullable', 'date', 'after:fecha_inicio'],
-            'valor_mensual' => ['required', 'numeric', 'min:1'],
+            // El valor no se valida aquí: ContratoService lo toma directamente
+            // de la reserva, nunca de lo que envíe el formulario.
         ];
     }
 

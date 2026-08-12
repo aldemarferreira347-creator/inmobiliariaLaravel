@@ -62,6 +62,7 @@ class MetodoPagoController extends Controller
 
         $this->tarjetas->eliminar($tarjeta);
 
-        return redirect()->route('perfil.tarjetas.index')->with(['mensaje' => 'Tarjeta eliminada correctamente.', 'tipo' => 'success']);
+        return redirect()->route('perfil.edit')
+            ->with(['mensaje' => 'Tarjeta eliminada correctamente.', 'tipo' => 'success', 'reabrirModal' => 'modal-tarjetas']);
     }
 }

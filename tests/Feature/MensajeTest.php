@@ -38,6 +38,25 @@ class MensajeTest extends TestCase
         ]);
     }
 
+    public function test_el_formulario_de_contacto_de_la_ficha_envia_el_mensaje_de_una_vez(): void
+    {
+        $cliente = User::factory()->create();
+        User::factory()->asesor()->create();
+        $inmueble = Inmueble::factory()->create();
+
+        $this->actingAs($cliente)
+            ->post(route('mensajes.iniciar', $inmueble), ['mensaje' => '¿Sigue disponible?'])
+            ->assertRedirect();
+
+        $conversacion = Conversacion::firstOrFail();
+
+        $this->assertDatabaseHas('mensaje', [
+            'conversacion_id' => $conversacion->id,
+            'emisor_id' => $cliente->id,
+            'contenido' => '¿Sigue disponible?',
+        ]);
+    }
+
     public function test_contactar_dos_veces_reutiliza_el_mismo_hilo(): void
     {
         $cliente = User::factory()->create();
