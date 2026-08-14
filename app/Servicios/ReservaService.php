@@ -61,6 +61,7 @@ class ReservaService
                 EstadoReserva::PendientePago->value,
                 'Reserva creada por el cliente.',
                 $cliente->id,
+                request()?->ip(),
             );
 
             return $reserva;
@@ -174,7 +175,7 @@ class ReservaService
             $anterior = $reserva->estado;
             $reserva->update(['estado' => $nuevo]);
 
-            HistorialReserva::registrar($reserva, $anterior->value, $nuevo->value, $comentario, $autor?->id);
+            HistorialReserva::registrar($reserva, $anterior->value, $nuevo->value, $comentario, $autor?->id, request()?->ip());
         });
     }
 

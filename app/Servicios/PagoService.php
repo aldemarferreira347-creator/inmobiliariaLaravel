@@ -62,6 +62,7 @@ class PagoService
                 EstadoReserva::ProcesandoPago->value,
                 "Pago registrado por el cliente ({$metodo->etiqueta()}).",
                 $reserva->usuario_id,
+                request()?->ip(),
             );
 
             return $pago;
@@ -147,6 +148,7 @@ class PagoService
                 EstadoReserva::PendientePago->value,
                 "Pago rechazado: {$motivo}",
                 $revisor?->id,
+                request()?->ip(),
             );
         });
 

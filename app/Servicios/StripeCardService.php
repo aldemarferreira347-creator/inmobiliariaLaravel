@@ -149,6 +149,7 @@ class StripeCardService
                 EstadoReserva::ProcesandoPago->value,
                 "Pago iniciado con tarjeta guardada ({$tarjeta->descripcion}).",
                 $reserva->usuario_id,
+                request()?->ip(),
             );
 
             return $pago;

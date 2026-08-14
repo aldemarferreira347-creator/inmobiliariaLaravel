@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Request;
 
 /**
  * Registro de auditoría de los cambios de estado de una reserva.
@@ -44,13 +43,17 @@ class HistorialReserva extends Model
         return $this->belongsTo(User::class, 'cambiado_por');
     }
 
-    // Deja constancia de una transición, tomando la IP de la petición en curso
+    /**
+     * Deja constancia de una transición. La IP de la petición, si la hay,
+     * la resuelve quien orquesta el cambio (el Service), no el Model.
+     */
     public static function registrar(
         Reserva $reserva,
         ?string $estadoAnterior,
         string $estadoNuevo,
         string $comentario,
         ?int $autorId = null,
+        ?string $ip = null,
     ): self {
         return static::create([
             'reserva_id' => $reserva->id,
@@ -58,7 +61,7 @@ class HistorialReserva extends Model
             'estado_nuevo' => $estadoNuevo,
             'cambiado_por' => $autorId,
             'comentario' => $comentario,
-            'ip_origen' => Request::ip(),
+            'ip_origen' => $ip,
         ]);
     }
 

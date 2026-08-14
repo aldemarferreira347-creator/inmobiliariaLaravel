@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Request;
 
 // Registro de auditoría de acciones administrativas (HU-26)
 class Auditoria extends Model
@@ -27,16 +26,25 @@ class Auditoria extends Model
         return $this->belongsTo(User::class, 'usuario_id');
     }
 
-    // Deja constancia de una acción tomando la IP de la petición en curso
-    public static function registrar(string $entidad, ?int $entidadId, string $accion, string $descripcion): self
-    {
+    /**
+     * Deja constancia de una acción. El autor y la IP los conoce quien hace la
+     * petición HTTP (el Controller), no el Model: se reciben ya resueltos.
+     */
+    public static function registrar(
+        string $entidad,
+        ?int $entidadId,
+        string $accion,
+        string $descripcion,
+        ?int $usuarioId = null,
+        ?string $ip = null,
+    ): self {
         return static::create([
-            'usuario_id' => auth()->id(),
+            'usuario_id' => $usuarioId,
             'entidad' => $entidad,
             'entidad_id' => $entidadId,
             'accion' => $accion,
             'descripcion' => $descripcion,
-            'ip_origen' => Request::ip(),
+            'ip_origen' => $ip,
         ]);
     }
 }

@@ -25,7 +25,7 @@ return new class extends Migration
             $table->enum('tipo', TipoInmueble::valores());
             $table->enum('modalidad', ModalidadInmueble::valores());
             $table->enum('estado', EstadoInmueble::valores())->default(EstadoInmueble::Disponible->value);
-            $table->decimal('precio_venta', 12, 2)->nullable();
+            $table->decimal('precio_venta', 15, 2)->nullable();
             $table->decimal('precio_arrendamiento', 12, 2)->nullable();
             $table->string('ciudad', 100);
             $table->string('barrio', 100);

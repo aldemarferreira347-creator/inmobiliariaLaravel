@@ -54,22 +54,4 @@ class Notificacion extends Model
     {
         return $this->leida_en !== null;
     }
-
-    // Enlace a la entidad que originó la notificación, si se puede resolver
-    public function getEnlaceAttribute(): ?string
-    {
-        if (blank($this->referencia_tipo) || blank($this->referencia_id)) {
-            return null;
-        }
-
-        $ruta = match ($this->referencia_tipo) {
-            'reserva' => 'reservas.show',
-            'contrato' => 'admin.contratos.show',
-            'inmueble' => 'inmuebles.show',
-            'conversacion' => 'mensajes.show',
-            default => null,
-        };
-
-        return $ruta !== null ? route($ruta, $this->referencia_id) : null;
-    }
 }

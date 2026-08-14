@@ -77,7 +77,9 @@ class UsuarioController extends Controller
                 'usuario',
                 $usuario->id,
                 'cambiar_estado',
-                "La cuenta de {$usuario->email} pasó a estado {$nuevoEstado->etiqueta()}."
+                "La cuenta de {$usuario->email} pasó a estado {$nuevoEstado->etiqueta()}.",
+                $request->user()->id,
+                $request->ip(),
             );
         });
 
