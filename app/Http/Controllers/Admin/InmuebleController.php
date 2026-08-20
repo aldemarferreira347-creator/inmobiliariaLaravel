@@ -61,7 +61,7 @@ class InmuebleController extends Controller
     /** Muestra el detalle de un inmueble para el modal de edición, con su estado recalculado en vivo. */
     public function show(Inmueble $inmueble): View
     {
-        return view('admin.inmuebles.show', [
+        return view('admin.inmuebles.index', [
             'inmueble' => $inmueble->load('imagenes'),
             'estadoCalculado' => $inmueble->estadoCalculado(),
         ]);
