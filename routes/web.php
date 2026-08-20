@@ -148,7 +148,7 @@ Route::middleware(['auth', 'rol:administrador'])
             ->name('imagenes.destroy');
 
         Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
-        Route::post('usuarios', [UsuarioController::class, 'store'])->name('usuarios.store');
+        Route::post('usuarios', [UsuarioController::class, 'store'])->name('usuario.store');
         Route::patch('usuarios/{usuario}/rol', [UsuarioController::class, 'cambiarRol'])->name('usuarios.rol');
         Route::patch('usuarios/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])->name('usuarios.estado');
         Route::delete('usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
