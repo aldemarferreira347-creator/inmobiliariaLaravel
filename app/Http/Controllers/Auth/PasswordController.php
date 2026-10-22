@@ -7,7 +7,6 @@ use App\Http\Requests\CambiarPasswordRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 
 /**
  * Cambio de contraseña desde la sesión iniciada (HU-25.2).
@@ -17,12 +16,6 @@ use Illuminate\View\View;
  */
 class PasswordController extends Controller
 {
-    /** Muestra el formulario para cambiar la contraseña. */
-    public function edit(): View
-    {
-        return view('perfil.cambiar-password');
-    }
-
     /** Actualiza la contraseña del usuario autenticado. */
     public function update(CambiarPasswordRequest $request): RedirectResponse
     {

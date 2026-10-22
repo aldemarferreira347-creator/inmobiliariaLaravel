@@ -72,14 +72,9 @@ Route::middleware('auth')->group(function () {
     Route::post('reservas/{reserva}/pagos/{pago}/sincronizar', [ReservaController::class, 'sincronizarPago'])->name('reservas.pagos.sincronizar');
 
     // Tarjetas guardadas del cliente (HU-20)
-    Route::get('perfil/tarjetas', [MetodoPagoController::class, 'index'])->name('perfil.tarjetas.index');
     Route::post('perfil/tarjetas/setup-intent', [MetodoPagoController::class, 'setupIntent'])->middleware('throttle:10,1')->name('perfil.tarjetas.setup-intent');
     Route::post('perfil/tarjetas', [MetodoPagoController::class, 'store'])->middleware('throttle:10,1')->name('perfil.tarjetas.store');
     Route::delete('perfil/tarjetas/{tarjeta}', [MetodoPagoController::class, 'destroy'])->name('perfil.tarjetas.destroy');
-
-    // Historial del cliente (HU-19)
-    Route::get('mis-arriendos', [PerfilController::class, 'misArriendos'])->name('perfil.arriendos');
-    Route::get('mis-compras', [PerfilController::class, 'misCompras'])->name('perfil.compras');
 
     // Citas de visita del cliente (HU-27)
     Route::get('mis-citas', [CitaController::class, 'index'])->name('citas.index');

@@ -81,37 +81,6 @@ class PerfilController extends Controller
         return $this->volverAlPerfil('Foto de perfil eliminada.');
     }
 
-    /**
-     * HU-19.1: arriendos del cliente. Una reserva confirmada sin contrato aún
-     * se muestra como «Contrato pendiente» mientras corre el plazo de RN-18.
-     */
-    public function misArriendos(Request $request): View
-    {
-        return view('perfil.mis-arriendos', [
-            'usuario' => $request->user(),
-            'reservas' => $request->user()
-                ->reservas()
-                ->where('estado', EstadoReserva::Confirmada)
-                ->deArriendo()
-                ->with('inmueble', 'contrato')
-                ->recientes()
-                ->get(),
-        ]);
-    }
-
-    // HU-19.2: compras del cliente
-    public function misCompras(Request $request): View
-    {
-        return view('perfil.mis-compras', [
-            'usuario' => $request->user(),
-            'ventas' => $request->user()
-                ->ventas()
-                ->with('inmueble', 'asesor')
-                ->latest('fecha_venta')
-                ->get(),
-        ]);
-    }
-
     /** Redirige a la edición del perfil con un mensaje flash de éxito. */
     private function volverAlPerfil(string $mensaje): RedirectResponse
     {

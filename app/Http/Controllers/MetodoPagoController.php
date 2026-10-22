@@ -8,28 +8,17 @@ use App\Servicios\StripeCardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 /**
  * Tarjetas guardadas del cliente autenticado (HU-20).
  *
  * No maneja datos de tarjeta directamente: toda la tokenización y el cobro
  * los resuelve Stripe.js en el navegador y {@see StripeCardService} en el
- * servidor, sobre el modelo {@see \App\Models\MetodoPagoGuardado}.
+ * servidor, sobre el modelo {@see MetodoPagoGuardado}.
  */
 class MetodoPagoController extends Controller
 {
     public function __construct(private readonly StripeCardService $tarjetas) {}
-
-    /** Lista las tarjetas guardadas del cliente autenticado. */
-    public function index(Request $request): View
-    {
-        return view('perfil.tarjetas.index', [
-            'usuario' => $request->user(),
-            'tarjetas' => $this->tarjetas->listar($request->user()),
-            'stripeKey' => config('services.stripe.key'),
-        ]);
-    }
 
     /** Crea el SetupIntent que Stripe.js necesita para tokenizar la tarjeta en el navegador. */
     // Abre un SetupIntent para que Stripe.js tokenice la tarjeta en el navegador
