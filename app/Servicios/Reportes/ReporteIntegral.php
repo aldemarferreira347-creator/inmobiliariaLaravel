@@ -5,6 +5,10 @@ namespace App\Servicios\Reportes;
 use App\Enumerados\TipoReporte;
 use Illuminate\Support\Collection;
 
+/**
+ * Reporte integral: junta en una sola tabla las cifras resumen de los demás
+ * reportes (reservaciones, pagos, contratos y ventas) con el mismo filtro.
+ */
 class ReporteIntegral extends Reporte
 {
     public function tipo(): TipoReporte
@@ -17,11 +21,10 @@ class ReporteIntegral extends Reporte
         return ['Módulo', 'Indicador', 'Valor'];
     }
 
+    // La columna «Valor» mezcla conteos e importes ya formateados: no se declara numérica
+    // para que Excel no aplique formato de moneda a todos.
     public function columnasNumericas(): array
     {
-        // We do not format it here since values can be both counts (int) and amounts (string formatted as money)
-        // If we set it as numeric, Excel will format it with currency always.
-        // It's better to keep it empty for a mixed column.
         return [];
     }
 
@@ -31,15 +34,8 @@ class ReporteIntegral extends Reporte
         $filas = collect();
 
         foreach ([TipoReporte::Reservaciones, TipoReporte::Pagos, TipoReporte::Contratos, TipoReporte::Ventas] as $tipo) {
-            $reporte = $fabrica->crear($tipo, $this->filtro);
-            
-            foreach ($reporte->resumen() as $indicador => $valor) {
-                // If it's a numeric string like "$1.000", keep it as string.
-                $filas->push([
-                    $tipo->etiqueta(),
-                    $indicador,
-                    $valor
-                ]);
+            foreach ($fabrica->crear($tipo, $this->filtro)->resumen() as $indicador => $valor) {
+                $filas->push([$tipo->etiqueta(), $indicador, $valor]);
             }
         }
 

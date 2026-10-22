@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Enumerados\EstadoReserva;
 use App\Enumerados\TipoReporte;
 use App\Models\Contrato;
+use App\Models\Inmueble;
 use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class ReporteTest extends TestCase
@@ -16,6 +19,25 @@ class ReporteTest extends TestCase
     private function administrador(): User
     {
         return User::factory()->administrador()->create();
+    }
+
+    public function test_el_excel_no_interpreta_formulas_de_los_datos(): void
+    {
+        $inmueble = Inmueble::factory()->create(['titulo' => '=1+1']);
+        Reserva::factory()->create(['inmueble_id' => $inmueble->id]);
+
+        $contenido = $this->actingAs($this->administrador())
+            ->get(route('admin.reportes.excel', TipoReporte::Reservaciones->value))
+            ->assertOk()
+            ->streamedContent();
+
+        $archivo = tempnam(sys_get_temp_dir(), 'rep').'.xlsx';
+        file_put_contents($archivo, $contenido);
+        $celda = IOFactory::load($archivo)->getActiveSheet()->getCell('C5');
+        unlink($archivo);
+
+        $this->assertSame(DataType::TYPE_STRING, $celda->getDataType());
+        $this->assertSame('=1+1', $celda->getValue());
     }
 
     public function test_un_cliente_no_accede_a_los_reportes(): void

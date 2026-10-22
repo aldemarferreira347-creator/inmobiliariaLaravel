@@ -45,7 +45,8 @@ class ReporteContratos extends Reporte
 
     public function resumen(): array
     {
-        $contratos = $this->consulta()->get();
+        // Solo se cuentan y suman filas: no hace falta cargar inmuebles ni clientes
+        $contratos = $this->consulta()->withoutEagerLoads()->get();
 
         return [
             'Contratos' => $contratos->count(),

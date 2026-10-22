@@ -41,7 +41,8 @@ class ReporteReservaciones extends Reporte
 
     public function resumen(): array
     {
-        $reservas = $this->consulta()->get();
+        // Solo se cuentan y suman filas: no hace falta cargar inmuebles ni clientes
+        $reservas = $this->consulta()->withoutEagerLoads()->get();
 
         return [
             'Total de reservas' => $reservas->count(),

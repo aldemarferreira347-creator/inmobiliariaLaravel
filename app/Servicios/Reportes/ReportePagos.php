@@ -42,7 +42,8 @@ class ReportePagos extends Reporte
 
     public function resumen(): array
     {
-        $pagos = $this->consulta()->get();
+        // Solo se cuentan y suman filas: no hace falta cargar inmuebles ni clientes
+        $pagos = $this->consulta()->withoutEagerLoads()->get();
 
         return [
             'Pagos registrados' => $pagos->count(),

@@ -2,6 +2,7 @@
 
 namespace App\Servicios\Reportes;
 
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -95,7 +96,7 @@ class ExportadorExcel
             return;
         }
 
-        $hoja->fromArray($filas->all(), null, 'A5');
+        $this->escribirFilas($hoja, $filas->all());
         $ultimaFila = 4 + $filas->count();
 
         // Filas alternas para facilitar la lectura
@@ -115,6 +116,28 @@ class ExportadorExcel
         $hoja->setAutoFilter("A4:{$ultima}{$ultimaFila}");
         $hoja->freezePane('A5');
         $this->ajustarAnchos($hoja, count($columnas));
+    }
+
+    /**
+     * Los textos se escriben como texto, nunca como fórmula: un título de
+     * inmueble o una notaría que empiece por «=» no debe ejecutarse al abrir
+     * el archivo (inyección de fórmulas en hojas de cálculo).
+     *
+     * @param  array<int, array<int, string|int|float|null>>  $filas
+     */
+    private function escribirFilas($hoja, array $filas): void
+    {
+        foreach ($filas as $indiceFila => $fila) {
+            foreach (array_values($fila) as $indiceColumna => $valor) {
+                $celda = $this->letraColumna($indiceColumna + 1).(5 + $indiceFila);
+
+                if (is_int($valor) || is_float($valor)) {
+                    $hoja->setCellValue($celda, $valor);
+                } else {
+                    $hoja->setCellValueExplicit($celda, (string) $valor, DataType::TYPE_STRING);
+                }
+            }
+        }
     }
 
     private function ajustarAnchos($hoja, int $total): void
