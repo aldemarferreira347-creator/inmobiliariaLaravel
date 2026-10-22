@@ -2,6 +2,7 @@
 
 namespace App\Servicios;
 
+use App\Enumerados\EstadoPago;
 use App\Enumerados\MetodoPago;
 use App\Enumerados\PasarelaPago;
 use App\Models\MetodoPagoGuardado;
@@ -143,7 +144,7 @@ class StripeCardService
                 'confirm' => true,
                 'description' => "Reserva {$reserva->codigo_reserva}",
                 'metadata' => ['reserva_id' => (string) $reserva->id, 'pago_id' => (string) $pago->id],
-            ]);
+            ], ['idempotency_key' => "pago-{$pago->id}"]);
         } catch (CardException $e) {
             $this->pagos->rechazar($pago, null, $e->getError()->message ?? 'Tarjeta rechazada.');
             throw ValidationException::withMessages(['tarjeta' => 'Pago rechazado. Intenta con otro método de pago.']);
@@ -166,6 +167,61 @@ class StripeCardService
 
         $this->pagos->rechazar($pago, null, "El pago no pudo completarse (estado: {$intent->status}).");
         throw ValidationException::withMessages(['tarjeta' => 'El pago no pudo completarse. Intenta nuevamente.']);
+    }
+
+    /**
+     * Secreto del PaymentIntent de un pago pendiente de verificación 3DS.
+     * Se pide a Stripe en el momento en vez de guardarlo o enviarlo por la sesión.
+     *
+     * @throws ValidationException
+     */
+    public function clientSecretDe(Pago $pago): string
+    {
+        return $this->consultarIntento($pago)->client_secret;
+    }
+
+    /**
+     * Aplica el resultado que Stripe tiene del pago. Es idempotente frente al
+     * webhook: si ya se aplicó, no hace nada.
+     *
+     * @return string 'succeeded', 'rechazado' o el estado de Stripe que sigue en curso
+     *
+     * @throws ValidationException
+     */
+    public function sincronizarPago(Pago $pago): string
+    {
+        $intento = $this->consultarIntento($pago);
+
+        try {
+            if ($intento->status === PaymentIntent::STATUS_SUCCEEDED) {
+                $this->pagos->aprobar($pago);
+
+                return 'succeeded';
+            }
+
+            if (in_array($intento->status, [PaymentIntent::STATUS_REQUIRES_PAYMENT_METHOD, PaymentIntent::STATUS_CANCELED], true)) {
+                $this->pagos->rechazar($pago, null, $intento->last_payment_error->message ?? 'La verificación del pago no se completó.');
+
+                return 'rechazado';
+            }
+        } catch (ValidationException) {
+            // El webhook (o una cancelación) ya resolvió este pago: nada que aplicar
+            return $pago->refresh()->estado === EstadoPago::Pagado ? 'succeeded' : 'rechazado';
+        }
+
+        return $intento->status;
+    }
+
+    /** @throws ValidationException */
+    private function consultarIntento(Pago $pago): PaymentIntent
+    {
+        try {
+            return $this->stripe->paymentIntents->retrieve($pago->referencia_pasarela);
+        } catch (ApiErrorException $e) {
+            report($e);
+
+            throw ValidationException::withMessages(['tarjeta' => 'No se pudo consultar el pago con Stripe. Inténtalo de nuevo en unos minutos.']);
+        }
     }
 
     private function obtenerOcrearCustomer(User $cliente): string

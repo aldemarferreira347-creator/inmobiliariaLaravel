@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enumerados\EstadoPago;
 use App\Http\Requests\RegistrarPagoRequest;
 use App\Http\Requests\SolicitarReservaRequest;
 use App\Models\Inmueble;
 use App\Models\MetodoPagoGuardado;
+use App\Models\Pago;
 use App\Models\Reserva;
 use App\Servicios\PagoService;
 use App\Servicios\ReservaService;
 use App\Servicios\StripeCardService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -69,6 +72,7 @@ class ReservaController extends Controller
         return view('reservas.show', [
             'reserva' => $reserva->load(['inmueble', 'pagos.revisor', 'historial.autor', 'contrato']),
             'tarjetas' => $this->tarjetas->listar($reserva->cliente),
+            'stripeKey' => config('services.stripe.key'),
         ]);
     }
 
@@ -99,7 +103,31 @@ class ReservaController extends Controller
             ->route('reservas.show', $reserva)
             ->with(match ($resultado['estado']) {
                 'succeeded' => ['mensaje' => "Pago aprobado. La reserva {$reserva->codigo_reserva} quedó confirmada.", 'tipo' => 'success'],
-                default => ['mensaje' => 'Tu banco requiere una verificación adicional para completar el pago. Te avisaremos en cuanto se confirme.', 'tipo' => 'info'],
+                default => ['mensaje' => 'Tu banco requiere una verificación adicional: complétala en el recuadro «Verificación del banco pendiente».', 'tipo' => 'info'],
+            });
+    }
+
+    /** Secreto del PaymentIntent para que Stripe.js complete la verificación 3D Secure en el navegador. */
+    public function verificacionDePago(Reserva $reserva, Pago $pago): JsonResponse
+    {
+        $this->autorizarVerificacion($reserva, $pago);
+
+        return response()->json(['client_secret' => $this->tarjetas->clientSecretDe($pago)]);
+    }
+
+    /** Aplica el resultado que Stripe tiene del pago tras la verificación (el webhook puede tardar o llegar antes). */
+    public function sincronizarPago(Reserva $reserva, Pago $pago): RedirectResponse
+    {
+        $this->autorizarVerificacion($reserva, $pago);
+
+        $resultado = $this->tarjetas->sincronizarPago($pago);
+
+        return redirect()
+            ->route('reservas.show', $reserva)
+            ->with(match ($resultado) {
+                'succeeded' => ['mensaje' => "Pago aprobado. La reserva {$reserva->codigo_reserva} quedó confirmada.", 'tipo' => 'success'],
+                'rechazado' => ['mensaje' => 'La verificación no se completó y el pago fue rechazado. Puedes intentarlo de nuevo.', 'tipo' => 'error'],
+                default => ['mensaje' => 'Tu banco todavía no confirma el pago. Te avisaremos en cuanto se confirme.', 'tipo' => 'info'],
             });
     }
 
@@ -114,5 +142,18 @@ class ReservaController extends Controller
         return redirect()
             ->route('reservas.index')
             ->with(['mensaje' => "Reserva {$reserva->codigo_reserva} cancelada.", 'tipo' => 'success']);
+    }
+
+    /** Solo el dueño, y solo para un pago de esta reserva que sigue esperando a la pasarela. */
+    private function autorizarVerificacion(Reserva $reserva, Pago $pago): void
+    {
+        $this->authorize('verificarPago', $reserva);
+
+        abort_unless(
+            $pago->reserva_id === $reserva->id
+                && $pago->referencia_pasarela !== null
+                && $pago->estado === EstadoPago::Procesando,
+            404,
+        );
     }
 }

@@ -37,6 +37,12 @@ class ReservaPolicy
         return $reserva->usuario_id === $usuario->id && $reserva->admiteNuevoPago();
     }
 
+    // Solo el dueño de la reserva completa la verificación bancaria de su pago
+    public function verificarPago(User $usuario, Reserva $reserva): bool
+    {
+        return $reserva->usuario_id === $usuario->id;
+    }
+
     public function revisarPago(User $usuario): bool
     {
         return $usuario->esAdministrador();

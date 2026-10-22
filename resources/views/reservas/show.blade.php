@@ -77,6 +77,31 @@
                         </div>
                     </div>
 
+                    @php
+                        $pagoPorVerificar = $reserva->pagoEnRevision();
+                        $pagoPorVerificar = $pagoPorVerificar?->referencia_pasarela ? $pagoPorVerificar : null;
+                    @endphp
+                    @if ($pagoPorVerificar && $reserva->usuario_id === auth()->id())
+                        <div class="rdetalle-card rdetalle-card--upload" id="verificar-pago"
+                            data-stripe-key="{{ $stripeKey }}"
+                            data-verificacion-url="{{ route('reservas.pagos.verificacion', [$reserva, $pagoPorVerificar]) }}">
+                            <h2 class="rdetalle-card-title">
+                                <x-icon name="shield-check" class="h-5 w-5" /> Verificación del banco pendiente
+                            </h2>
+                            <p class="subtitle rdetalle-hint">
+                                Tu banco pidió confirmar el pago de {{ $reserva->monto_formateado }}. Complétalo para
+                                confirmar la reserva.
+                            </p>
+                            <p class="error-text" id="verificar-pago-error" role="alert"></p>
+                            <form method="POST" action="{{ route('reservas.pagos.sincronizar', [$reserva, $pagoPorVerificar]) }}">
+                                @csrf
+                                <button type="submit" class="btn-panel-primary" data-verificar-pago>
+                                    Completar verificación
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+
                     @if ($reserva->admiteNuevoPago())
                         @can('registrarPago', $reserva)
                             @if ($tarjetas->isNotEmpty())
@@ -174,4 +199,8 @@
             </div>
         </div>
     </div>
+
+@push('scripts')
+    <script src="https://js.stripe.com/v3/"></script>
+@endpush
 @endsection

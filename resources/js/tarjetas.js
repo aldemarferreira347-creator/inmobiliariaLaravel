@@ -27,7 +27,44 @@ async function pedirJson(url, body) {
     return datos;
 }
 
+/*
+ * Verificación 3D Secure de un pago con tarjeta guardada: el banco pide una
+ * confirmación extra. Stripe.js la resuelve con el secreto del intento y,
+ * al terminar, el servidor consulta a Stripe el resultado (el webhook puede
+ * llegar antes o después; ambos caminos son idempotentes).
+ */
+function iniciarVerificacionPago() {
+    const tarjeta = document.getElementById('verificar-pago');
+    if (!tarjeta || typeof window.Stripe !== 'function') return;
+
+    const formulario = tarjeta.querySelector('form');
+    const boton = tarjeta.querySelector('[data-verificar-pago]');
+    const error = document.getElementById('verificar-pago-error');
+
+    formulario.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        mostrarError(error, '');
+        boton.disabled = true;
+
+        try {
+            const { client_secret: clientSecret } = await pedirJson(tarjeta.dataset.verificacionUrl);
+            const resultado = await window.Stripe(tarjeta.dataset.stripeKey).handleNextAction({ clientSecret });
+
+            if (resultado.error) {
+                throw new Error(resultado.error.message);
+            }
+
+            formulario.submit();
+        } catch (fallo) {
+            mostrarError(error, fallo.message);
+            boton.disabled = false;
+        }
+    });
+}
+
 export function iniciarTarjetas() {
+    iniciarVerificacionPago();
+
     const contenedor = document.getElementById('stripe-card-element');
     const formulario = document.getElementById('form-tarjeta-nueva');
     if (!contenedor || !formulario || typeof window.Stripe !== 'function') return;
@@ -37,11 +74,12 @@ export function iniciarTarjetas() {
     // El formulario vive dentro de un modal oculto por defecto: montar el
     // Element de Stripe ahí lo deja mal renderizado, así que se monta recién
     // cuando el modal se abre (una sola vez).
+    let stripe = null;
     let cardElement = null;
 
     function montarSiHaceFalta() {
         if (cardElement) return;
-        const stripe = window.Stripe(formulario.dataset.stripeKey);
+        stripe = window.Stripe(formulario.dataset.stripeKey);
         const elements = stripe.elements();
         cardElement = elements.create('card');
         cardElement.mount('#stripe-card-element');
