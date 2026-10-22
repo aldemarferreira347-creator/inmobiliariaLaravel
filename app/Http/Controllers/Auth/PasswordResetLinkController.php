@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -12,7 +13,7 @@ use Illuminate\View\View;
  * Solicitud del enlace de recuperación de contraseña (HU-24).
  *
  * El envío del correo con el enlace lo resuelve el broker `Password` de
- * Laravel sobre el modelo {@see \App\Models\User}.
+ * Laravel sobre el modelo {@see User}.
  */
 class PasswordResetLinkController extends Controller
 {
@@ -27,10 +28,13 @@ class PasswordResetLinkController extends Controller
     {
         $request->validate(['email' => ['required', 'email']]);
 
-        $estado = Password::sendResetLink($request->only('email'));
+        // Se ignora el resultado: responder distinto según exista o no el correo
+        // permitiría averiguar quién tiene cuenta (enumeración de usuarios).
+        Password::sendResetLink($request->only('email'));
 
-        return $estado === Password::RESET_LINK_SENT
-            ? back()->with(['mensaje' => __($estado), 'tipo' => 'success'])
-            : back()->withInput($request->only('email'))->withErrors(['email' => __($estado)]);
+        return back()->with([
+            'mensaje' => 'Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.',
+            'tipo' => 'success',
+        ]);
     }
 }

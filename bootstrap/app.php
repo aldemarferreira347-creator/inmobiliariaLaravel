@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AgregarCabecerasSeguridad;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Foundation\Application;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Corta la sesión de cuentas desactivadas en cualquier ruta (pública o
         // privada), igual que hacía antes Controller::callAction() para todos.
         $middleware->appendToGroup('web', EnsureUserIsActive::class);
+        $middleware->appendToGroup('web', AgregarCabecerasSeguridad::class);
 
         // ->middleware('rol:administrador') / ->middleware('rol:asesor,administrador')
         $middleware->alias(['rol' => EnsureUserHasRole::class]);

@@ -80,4 +80,59 @@ class AutenticacionTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function test_el_login_ignora_mayusculas_y_espacios_del_correo(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->post(route('login'), [
+            'email' => '  '.mb_strtoupper($usuario->email).' ',
+            'password' => UserFactory::PASSWORD,
+        ])->assertRedirect(route('inicio'));
+
+        $this->assertAuthenticatedAs($usuario);
+    }
+
+    public function test_recuperar_la_contrasena_no_revela_si_el_correo_existe(): void
+    {
+        $mensaje = 'Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.';
+
+        $this->post(route('password.email'), ['email' => User::factory()->create()->email])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('mensaje', $mensaje);
+
+        $this->post(route('password.email'), ['email' => 'nadie@ejemplo.test'])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('mensaje', $mensaje);
+    }
+
+    public function test_las_respuestas_incluyen_cabeceras_de_seguridad(): void
+    {
+        $this->get(route('inicio'))
+            ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    }
+
+    public function test_el_registro_esta_limitado_por_frecuencia(): void
+    {
+        for ($i = 0; $i < 6; $i++) {
+            $this->post(route('register'), []);
+        }
+
+        $this->post(route('register'), [])->assertStatus(429);
+    }
+
+    public function test_cambiar_la_contrasena_invalida_el_recuerdame(): void
+    {
+        $usuario = User::factory()->create(['remember_token' => 'token-viejo']);
+
+        $this->actingAs($usuario)->put(route('password.update'), [
+            'contrasena_actual' => UserFactory::PASSWORD,
+            'contrasena' => 'NuevaClave2*Segura',
+            'contrasena_confirmation' => 'NuevaClave2*Segura',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertNotSame('token-viejo', $usuario->refresh()->remember_token);
+    }
 }

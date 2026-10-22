@@ -62,10 +62,10 @@ Route::middleware('auth')->group(function () {
 
     // Reservas del cliente (HU-07 / HU-23)
     Route::get('mis-reservas', [ReservaController::class, 'index'])->name('reservas.index');
-    Route::post('reservas', [ReservaController::class, 'store'])->name('reservas.store');
+    Route::post('reservas', [ReservaController::class, 'store'])->middleware('throttle:20,1')->name('reservas.store');
     Route::get('reservas/{reserva}', [ReservaController::class, 'show'])->name('reservas.show');
-    Route::post('reservas/{reserva}/pago', [ReservaController::class, 'registrarPago'])->name('reservas.pago');
-    Route::post('reservas/{reserva}/pagar-con-tarjeta/{tarjeta}', [ReservaController::class, 'pagarConTarjeta'])->name('reservas.pagar-con-tarjeta');
+    Route::post('reservas/{reserva}/pago', [ReservaController::class, 'registrarPago'])->middleware('throttle:10,1')->name('reservas.pago');
+    Route::post('reservas/{reserva}/pagar-con-tarjeta/{tarjeta}', [ReservaController::class, 'pagarConTarjeta'])->middleware('throttle:10,1')->name('reservas.pagar-con-tarjeta');
     Route::post('reservas/{reserva}/cancelar', [ReservaController::class, 'cancelar'])->name('reservas.cancelar');
     // Verificación 3D Secure de un pago con tarjeta: secreto del intento y sincronización posterior
     Route::post('reservas/{reserva}/pagos/{pago}/verificacion', [ReservaController::class, 'verificacionDePago'])->name('reservas.pagos.verificacion');
@@ -73,8 +73,8 @@ Route::middleware('auth')->group(function () {
 
     // Tarjetas guardadas del cliente (HU-20)
     Route::get('perfil/tarjetas', [MetodoPagoController::class, 'index'])->name('perfil.tarjetas.index');
-    Route::post('perfil/tarjetas/setup-intent', [MetodoPagoController::class, 'setupIntent'])->name('perfil.tarjetas.setup-intent');
-    Route::post('perfil/tarjetas', [MetodoPagoController::class, 'store'])->name('perfil.tarjetas.store');
+    Route::post('perfil/tarjetas/setup-intent', [MetodoPagoController::class, 'setupIntent'])->middleware('throttle:10,1')->name('perfil.tarjetas.setup-intent');
+    Route::post('perfil/tarjetas', [MetodoPagoController::class, 'store'])->middleware('throttle:10,1')->name('perfil.tarjetas.store');
     Route::delete('perfil/tarjetas/{tarjeta}', [MetodoPagoController::class, 'destroy'])->name('perfil.tarjetas.destroy');
 
     // Historial del cliente (HU-19)
@@ -83,9 +83,9 @@ Route::middleware('auth')->group(function () {
 
     // Citas de visita del cliente (HU-27)
     Route::get('mis-citas', [CitaController::class, 'index'])->name('citas.index');
-    Route::post('citas', [CitaController::class, 'store'])->name('citas.store');
+    Route::post('citas', [CitaController::class, 'store'])->middleware('throttle:20,1')->name('citas.store');
     Route::post('citas/{cita}/cancelar', [CitaController::class, 'cancelar'])->name('citas.cancelar');
-    Route::get('citas/franjas-disponibles', [CitaController::class, 'franjasDisponibles'])->name('citas.franjas-disponibles');
+    Route::get('citas/franjas-disponibles', [CitaController::class, 'franjasDisponibles'])->middleware('throttle:60,1')->name('citas.franjas-disponibles');
 
     // Documentos privados: contratos firmados y escrituras
     Route::get('contratos/{contrato}/descargar', [DescargaController::class, 'contrato'])->name('contratos.descargar');
@@ -100,10 +100,10 @@ Route::middleware('auth')->group(function () {
     Route::get('mensajes', [MensajeController::class, 'index'])->name('mensajes.index');
     Route::get('mensajes/sin-leer', [MensajeController::class, 'sinLeer'])->name('mensajes.sin-leer');
     Route::get('mensajes/{conversacion}', [MensajeController::class, 'show'])->name('mensajes.show');
-    Route::post('mensajes/{conversacion}', [MensajeController::class, 'store'])->name('mensajes.store');
+    Route::post('mensajes/{conversacion}', [MensajeController::class, 'store'])->middleware('throttle:30,1')->name('mensajes.store');
     Route::get('mensajes/{conversacion}/anteriores', [MensajeController::class, 'anteriores'])->name('mensajes.anteriores');
     Route::get('mensajes/{conversacion}/nuevos', [MensajeController::class, 'nuevos'])->name('mensajes.nuevos');
-    Route::post('inmuebles/{inmueble}/contactar', [MensajeController::class, 'iniciar'])->name('mensajes.iniciar');
+    Route::post('inmuebles/{inmueble}/contactar', [MensajeController::class, 'iniciar'])->middleware('throttle:20,1')->name('mensajes.iniciar');
 });
 
 /*

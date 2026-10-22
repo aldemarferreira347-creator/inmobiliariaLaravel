@@ -27,6 +27,12 @@ class LoginRequest extends FormRequest
         ];
     }
 
+    // Los correos se guardan en minúsculas: el inicio de sesión no debe depender de cómo se teclee
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['email' => mb_strtolower(trim((string) $this->input('email')))]);
+    }
+
     /**
      * Verifica las credenciales del formulario.
      *
