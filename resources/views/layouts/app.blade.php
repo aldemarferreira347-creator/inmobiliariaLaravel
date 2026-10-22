@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#0f1e4a">
+    <meta name="color-scheme" content="light dark">
+    {{-- Aplica el tema guardado (o el del sistema) antes de pintar, para evitar el destello claro --}}
+    <script>
+        try {
+            document.documentElement.dataset.theme = localStorage.getItem('tema')
+                || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        } catch (e) {}
+    </script>
     <meta name="description"
         content="Inmobiliaria García — Encuentra apartamentos, casas y locales en Neiva. Compra, venta y arriendo de inmuebles con asesoría personalizada.">
     <link rel="icon" type="image/svg+xml" href="{{ asset('assets/img/logosolo.svg') }}">

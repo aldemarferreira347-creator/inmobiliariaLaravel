@@ -106,6 +106,9 @@ function iniciarConfirmaciones() {
             cancelButtonColor: '#64748b',
             confirmButtonText: formulario.dataset.confirmarBoton ?? 'Sí, continuar',
             cancelButtonText: 'Cancelar',
+            // El diálogo toma los colores del tema activo
+            background: getComputedStyle(document.documentElement).getPropertyValue('--color-card').trim(),
+            color: getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim(),
         }).then((resultado) => {
             if (!resultado.isConfirmed) {
                 // Un <select> con envío automático (ej. cambiar rol) ya cambió su
@@ -145,7 +148,41 @@ function iniciarCamposDePrecio() {
     });
 }
 
+// ── Tema claro / oscuro ───────────────────────────────────────────
+/*
+ * El tema inicial lo fija un script en <head> (layouts/app.blade.php) antes
+ * de pintar. Aquí solo se alterna y se recuerda la elección del usuario.
+ */
+function iniciarTema() {
+    const raiz = document.documentElement;
+    const botones = document.querySelectorAll('[data-tema-toggle]');
+
+    const reflejar = () => {
+        const oscuro = raiz.dataset.theme === 'dark';
+        botones.forEach((boton) => {
+            boton.setAttribute('aria-pressed', String(oscuro));
+            boton.setAttribute('aria-label', oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        });
+    };
+
+    botones.forEach((boton) => boton.addEventListener('click', () => {
+        const nuevo = raiz.dataset.theme === 'dark' ? 'light' : 'dark';
+        raiz.dataset.theme = nuevo;
+
+        try {
+            localStorage.setItem('tema', nuevo);
+        } catch {
+            // Sin almacenamiento (modo privado): el tema vale solo para esta visita
+        }
+
+        reflejar();
+    }));
+
+    reflejar();
+}
+
 export function iniciarInterfaz() {
+    iniciarTema();
     iniciarMenuMovil();
     iniciarModales();
     iniciarToggleContrasena();

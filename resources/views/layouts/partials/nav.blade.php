@@ -75,6 +75,14 @@
                         </a>
                     </li>
                 @endauth
+
+                <li>
+                    <button type="button" class="theme-toggle" data-tema-toggle aria-pressed="false"
+                        aria-label="Cambiar a modo oscuro" title="Cambiar tema">
+                        <x-icon name="moon" class="theme-toggle-luna h-5 w-5" />
+                        <x-icon name="sun" class="theme-toggle-sol h-5 w-5" />
+                    </button>
+                </li>
             </ul>
         </nav>
     </div>

@@ -23,9 +23,6 @@
     <x-icon name="message-square" class="nav-icon" /> Mensajes
     <span class="nav-badge hidden" data-badge-mensajes>0</span>
 </a>
-<a href="{{ route('inmuebles.index') }}" @class(['active' => request()->routeIs('inmuebles.*')])>
-    <x-icon name="search" class="nav-icon" /> Ver catálogo
-</a>
 <a href="{{ route('admin.notificaciones.create') }}" @class(['active' => request()->routeIs('admin.notificaciones.*')])>
     <x-icon name="megaphone" class="nav-icon" /> Enviar Notificación
 </a>
