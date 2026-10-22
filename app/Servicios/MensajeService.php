@@ -10,6 +10,7 @@ use App\Models\Mensaje;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,7 +23,10 @@ class MensajeService
 {
     private const DIRECTORIO_ADJUNTOS = 'chat';
 
-    public function __construct(private readonly NotificacionService $notificaciones) {}
+    public function __construct(
+        private readonly NotificacionService $notificaciones,
+        private readonly ArchivoPrivadoService $archivos,
+    ) {}
 
     /**
      * Abre —o recupera— el hilo entre un cliente y el equipo para un inmueble.
@@ -129,6 +133,7 @@ class MensajeService
 
     private function guardarAdjunto(UploadedFile $archivo): string
     {
-        return 'storage/'.$archivo->store(self::DIRECTORIO_ADJUNTOS, 'public');
+        // Disco privado: la imagen solo sale por MensajeController::adjunto(), que comprueba quién la pide
+        return $this->archivos->guardar($archivo, self::DIRECTORIO_ADJUNTOS, (string) Str::uuid());
     }
 }

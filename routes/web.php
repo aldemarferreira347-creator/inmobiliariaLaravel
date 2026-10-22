@@ -99,6 +99,7 @@ Route::middleware('auth')->group(function () {
     // Mensajería (HU-13)
     Route::get('mensajes', [MensajeController::class, 'index'])->name('mensajes.index');
     Route::get('mensajes/sin-leer', [MensajeController::class, 'sinLeer'])->name('mensajes.sin-leer');
+    Route::get('mensajes/adjuntos/{mensaje}', [MensajeController::class, 'adjunto'])->name('mensajes.adjunto');
     Route::get('mensajes/{conversacion}', [MensajeController::class, 'show'])->name('mensajes.show');
     Route::post('mensajes/{conversacion}', [MensajeController::class, 'store'])->middleware('throttle:30,1')->name('mensajes.store');
     Route::get('mensajes/{conversacion}/anteriores', [MensajeController::class, 'anteriores'])->name('mensajes.anteriores');

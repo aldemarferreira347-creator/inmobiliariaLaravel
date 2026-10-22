@@ -12,6 +12,12 @@ use App\Models\User;
  */
 class ConversacionPolicy
 {
+    // Solo un cliente abre un hilo con el equipo; el personal responde a los existentes
+    public function iniciar(User $usuario): bool
+    {
+        return $usuario->esCliente();
+    }
+
     public function view(User $usuario, Conversacion $conversacion): bool
     {
         return $conversacion->participa($usuario) || $usuario->esAdministrador();

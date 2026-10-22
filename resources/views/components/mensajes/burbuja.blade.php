@@ -5,8 +5,9 @@
     <span class="msg-sender-label">{{ $mensaje->emisor->nombre }}</span>
 
     @if ($mensaje->tieneAdjunto())
-        <a href="{{ $mensaje->adjunto_publico }}" target="_blank" rel="noopener" class="msg-attachment">
-            <img src="{{ $mensaje->adjunto_publico }}" alt="Imagen adjunta" loading="lazy">
+        @php($urlAdjunto = $mensaje->adjuntoEsPrivado() ? route('mensajes.adjunto', $mensaje) : $mensaje->adjunto_publico)
+        <a href="{{ $urlAdjunto }}" target="_blank" rel="noopener" class="msg-attachment">
+            <img src="{{ $urlAdjunto }}" alt="Imagen adjunta" loading="lazy">
         </a>
     @endif
 

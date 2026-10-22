@@ -78,7 +78,7 @@ class MensajeTest extends TestCase
 
     public function test_se_envia_un_mensaje_con_adjunto(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $conversacion = $this->hilo();
 
         $this->actingAs($conversacion->cliente)
@@ -92,7 +92,45 @@ class MensajeTest extends TestCase
 
         $this->assertSame('Hola, ¿sigue disponible?', $mensaje->contenido);
         $this->assertTrue($mensaje->tieneAdjunto());
-        Storage::disk('public')->assertExists(str_replace('storage/', '', $mensaje->adjunto_url));
+        Storage::disk('local')->assertExists($mensaje->adjunto_url);
+    }
+
+    public function test_el_adjunto_se_guarda_fuera_del_disco_publico(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $conversacion = $this->hilo();
+
+        $this->actingAs($conversacion->cliente)->post(route('mensajes.store', $conversacion), [
+            'adjunto' => UploadedFile::fake()->image('plano.jpg', 600, 400),
+        ]);
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertStringNotContainsString('storage/', Mensaje::firstOrFail()->adjunto_url);
+    }
+
+    public function test_el_adjunto_solo_lo_ve_quien_participa_o_el_administrador(): void
+    {
+        Storage::fake('local');
+        $conversacion = $this->hilo();
+
+        $this->actingAs($conversacion->cliente)->post(route('mensajes.store', $conversacion), [
+            'adjunto' => UploadedFile::fake()->image('plano.jpg', 600, 400),
+        ]);
+        $mensaje = Mensaje::firstOrFail();
+
+        $this->actingAs($conversacion->asesor)->get(route('mensajes.adjunto', $mensaje))->assertOk();
+        $this->actingAs(User::factory()->administrador()->create())->get(route('mensajes.adjunto', $mensaje))->assertOk();
+        $this->actingAs(User::factory()->create())->get(route('mensajes.adjunto', $mensaje))->assertForbidden();
+    }
+
+    public function test_un_asesor_no_puede_iniciar_una_conversacion_como_si_fuera_cliente(): void
+    {
+        $this->actingAs(User::factory()->asesor()->create())
+            ->post(route('mensajes.iniciar', Inmueble::factory()->create()))
+            ->assertForbidden();
+
+        $this->assertSame(0, Conversacion::count());
     }
 
     public function test_un_mensaje_vacio_y_sin_adjunto_se_rechaza(): void

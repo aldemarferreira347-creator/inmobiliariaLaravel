@@ -4,6 +4,7 @@ namespace App\Servicios;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -32,6 +33,12 @@ class ArchivoPrivadoService
     public function existe(string $ruta): bool
     {
         return Storage::disk(self::DISCO)->exists($ruta);
+    }
+
+    // Entrega el archivo para verlo en el navegador (p. ej. una imagen del chat)
+    public function mostrar(string $ruta): Response
+    {
+        return Storage::disk(self::DISCO)->response($ruta);
     }
 
     public function descargar(string $ruta, string $nombreVisible): StreamedResponse

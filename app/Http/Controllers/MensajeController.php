@@ -6,12 +6,14 @@ use App\Http\Requests\EnviarMensajeRequest;
 use App\Models\Conversacion;
 use App\Models\Inmueble;
 use App\Models\Mensaje;
+use App\Servicios\ArchivoPrivadoService;
 use App\Servicios\MensajeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Bandeja de mensajes (HU-13).
@@ -24,7 +26,10 @@ class MensajeController extends Controller
     /** Mensajes que se cargan de entrada y en cada «cargar más» */
     private const POR_PAGINA = 20;
 
-    public function __construct(private readonly MensajeService $mensajes) {}
+    public function __construct(
+        private readonly MensajeService $mensajes,
+        private readonly ArchivoPrivadoService $archivos,
+    ) {}
 
     /** Bandeja de conversaciones del usuario autenticado, sin ningún hilo abierto todavía. */
     public function index(Request $request): View
@@ -73,6 +78,8 @@ class MensajeController extends Controller
     // Primer contacto desde la ficha del inmueble
     public function iniciar(Request $request, Inmueble $inmueble): RedirectResponse
     {
+        $this->authorize('iniciar', Conversacion::class);
+
         $request->validate(['mensaje' => ['nullable', 'string', 'max:2000']]);
 
         $conversacion = $this->mensajes->abrirConversacion($request->user(), $inmueble);
@@ -114,6 +121,16 @@ class MensajeController extends Controller
         }
 
         return response()->json(['mensajes' => $this->serializar($mensajes, $request)]);
+    }
+
+    /** Entrega la imagen adjunta de un mensaje a quien puede leer el hilo. */
+    public function adjunto(Mensaje $mensaje): Response
+    {
+        $this->authorize('view', $mensaje->conversacion);
+
+        abort_unless($mensaje->adjuntoEsPrivado() && $this->archivos->existe($mensaje->adjunto_url), 404);
+
+        return $this->archivos->mostrar($mensaje->adjunto_url);
     }
 
     /** Contador global para el distintivo de la barra de navegación */
@@ -176,7 +193,7 @@ class MensajeController extends Controller
         return $mensajes->map(fn (Mensaje $mensaje) => [
             'id' => $mensaje->id,
             'contenido' => $mensaje->contenido,
-            'adjunto' => $mensaje->adjunto_publico,
+            'adjunto' => $mensaje->adjuntoEsPrivado() ? route('mensajes.adjunto', $mensaje) : $mensaje->adjunto_publico,
             'hora' => $mensaje->creado_en->format('H:i'),
             'fecha' => $mensaje->creado_en->translatedFormat('d \d\e F Y'),
             'propio' => $mensaje->emisor_id === $request->user()->id,

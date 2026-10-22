@@ -40,9 +40,16 @@ class Mensaje extends Model
         return filled($this->adjunto_url);
     }
 
+    // Los adjuntos anteriores vivían en el disco público (prefijo `storage/`); los nuevos son privados
+    public function adjuntoEsPrivado(): bool
+    {
+        return $this->tieneAdjunto() && ! Str::startsWith($this->adjunto_url, 'storage/');
+    }
+
+    // Solo para adjuntos heredados del disco público; los privados se piden por ruta autorizada
     public function getAdjuntoPublicoAttribute(): ?string
     {
-        return $this->tieneAdjunto() ? asset($this->adjunto_url) : null;
+        return $this->tieneAdjunto() && ! $this->adjuntoEsPrivado() ? asset($this->adjunto_url) : null;
     }
 
     // Texto abreviado para la lista de conversaciones
