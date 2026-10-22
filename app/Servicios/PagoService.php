@@ -37,13 +37,35 @@ class PagoService
      */
     public function registrar(Reserva $reserva, MetodoPago $metodo, ?string $referencia): Pago
     {
-        if (! $reserva->admiteNuevoPago()) {
-            throw ValidationException::withMessages([
-                'reserva' => 'Esta reserva no admite registrar un pago en este momento.',
-            ]);
-        }
+        $pago = $this->iniciar($reserva, $metodo, $referencia, "Pago registrado por el cliente ({$metodo->etiqueta()}).");
 
-        $pago = DB::transaction(function () use ($reserva, $metodo, $referencia) {
+        $this->notificaciones->paraStaff(
+            'Pago pendiente de revisión',
+            "{$reserva->cliente->nombre} registró un pago de {$pago->monto_formateado} para la reserva {$reserva->codigo_reserva}.",
+            TipoNotificacion::Info,
+            'reserva',
+            $reserva->id,
+        );
+
+        return $pago;
+    }
+
+    /**
+     * Crea el pago en revisión y pasa la reserva a «En revisión», con la fila
+     * de la reserva bloqueada: dos envíos simultáneos (doble clic) no pueden
+     * crear dos pagos ni dos cobros.
+     *
+     * @throws ValidationException
+     */
+    public function iniciar(Reserva $reserva, MetodoPago $metodo, ?string $referencia, string $comentario): Pago
+    {
+        return DB::transaction(function () use ($reserva, $metodo, $referencia, $comentario) {
+            if (! $reserva->releerBloqueado()->admiteNuevoPago()) {
+                throw ValidationException::withMessages([
+                    'reserva' => 'Esta reserva no admite registrar un pago en este momento.',
+                ]);
+            }
+
             $pago = Pago::create([
                 'reserva_id' => $reserva->id,
                 'metodo_pago' => $metodo,
@@ -60,23 +82,13 @@ class PagoService
                 $reserva,
                 $anterior->value,
                 EstadoReserva::ProcesandoPago->value,
-                "Pago registrado por el cliente ({$metodo->etiqueta()}).",
+                $comentario,
                 $reserva->usuario_id,
                 request()?->ip(),
             );
 
             return $pago;
         });
-
-        $this->notificaciones->paraStaff(
-            'Pago pendiente de revisión',
-            "{$reserva->cliente->nombre} registró un pago de {$pago->monto_formateado} para la reserva {$reserva->codigo_reserva}.",
-            TipoNotificacion::Info,
-            'reserva',
-            $reserva->id,
-        );
-
-        return $pago;
     }
 
     /**
@@ -90,9 +102,9 @@ class PagoService
      */
     public function aprobar(Pago $pago, ?User $revisor = null): void
     {
-        $this->asegurarQueEsRevisable($pago);
-
         DB::transaction(function () use ($pago, $revisor) {
+            $this->bloquearParaRevision($pago);
+
             $pago->update([
                 'estado' => EstadoPago::Pagado,
                 'revisado_por' => $revisor?->id,
@@ -128,9 +140,9 @@ class PagoService
      */
     public function rechazar(Pago $pago, ?User $revisor, string $motivo): void
     {
-        $this->asegurarQueEsRevisable($pago);
-
         DB::transaction(function () use ($pago, $revisor, $motivo) {
+            $this->bloquearParaRevision($pago);
+
             $pago->update([
                 'estado' => EstadoPago::Rechazado,
                 'revisado_por' => $revisor?->id,
@@ -164,13 +176,26 @@ class PagoService
     }
 
     /**
+     * Relee bloqueados la reserva y el pago (en ese orden, el mismo que usa
+     * ReservaService) y comprueba que sigan esperando revisión: el webhook de
+     * Stripe, otro administrador o una cancelación pueden haberse adelantado.
+     *
      * @throws ValidationException
      */
-    private function asegurarQueEsRevisable(Pago $pago): void
+    private function bloquearParaRevision(Pago $pago): void
     {
+        $reserva = $pago->reserva->releerBloqueado();
+        $pago->releerBloqueado();
+
         if (! $pago->estado->admiteRevision()) {
             throw ValidationException::withMessages([
                 'pago' => 'Este pago ya fue revisado.',
+            ]);
+        }
+
+        if ($reserva->estado !== EstadoReserva::ProcesandoPago) {
+            throw ValidationException::withMessages([
+                'pago' => "La reserva ya no está esperando este pago (estado: {$reserva->estado->etiqueta()}).",
             ]);
         }
     }

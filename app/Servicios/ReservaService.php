@@ -3,11 +3,13 @@
 namespace App\Servicios;
 
 use App\Enumerados\EstadoInmueble;
+use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
 use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoNotificacion;
 use App\Models\HistorialReserva;
 use App\Models\Inmueble;
+use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -114,20 +116,31 @@ class ReservaService
     // Cancelación por el cliente o por la administración; libera el inmueble
     public function cancelar(Reserva $reserva, User $autor, ?string $motivo = null): void
     {
-        if ($reserva->estado->esFinal()) {
-            throw ValidationException::withMessages([
-                'estado' => 'Esta reserva ya está cerrada y no admite cambios.',
+        DB::transaction(function () use ($reserva, $autor, $motivo) {
+            if ($reserva->releerBloqueado()->estado->esFinal()) {
+                throw ValidationException::withMessages([
+                    'estado' => 'Esta reserva ya está cerrada y no admite cambios.',
+                ]);
+            }
+
+            // Un pago que seguía en revisión ya no puede aprobarse después y
+            // resucitar la reserva: se cierra junto con ella.
+            Pago::where('reserva_id', $reserva->id)->enRevision()->update([
+                'estado' => EstadoPago::Rechazado,
+                'motivo_rechazo' => 'Reserva cancelada.',
+                'revisado_por' => $autor->id,
+                'revisado_en' => now(),
             ]);
-        }
 
-        $this->transicionar(
-            $reserva,
-            EstadoReserva::Cancelada,
-            $motivo ?: 'Reserva cancelada.',
-            $autor,
-        );
+            $this->transicionar(
+                $reserva,
+                EstadoReserva::Cancelada,
+                $motivo ?: 'Reserva cancelada.',
+                $autor,
+            );
 
-        $this->liberarInmueble($reserva);
+            $this->liberarInmueble($reserva);
+        });
 
         $this->notificaciones->paraUsuario(
             $reserva->cliente,
@@ -143,13 +156,26 @@ class ReservaService
     // Expiración automática por vencimiento del plazo de pago (HU-09.2)
     public function expirar(Reserva $reserva): void
     {
-        $this->transicionar(
-            $reserva,
-            EstadoReserva::Expirada,
-            'Expirada automáticamente: venció el plazo de pago.',
-        );
+        $expirada = DB::transaction(function () use ($reserva) {
+            // El cliente pudo registrar el pago justo mientras corría la tarea
+            if ($reserva->releerBloqueado()->estado !== EstadoReserva::PendientePago || ! $reserva->estaVencida()) {
+                return false;
+            }
 
-        $this->liberarInmueble($reserva);
+            $this->transicionar(
+                $reserva,
+                EstadoReserva::Expirada,
+                'Expirada automáticamente: venció el plazo de pago.',
+            );
+
+            $this->liberarInmueble($reserva);
+
+            return true;
+        });
+
+        if (! $expirada) {
+            return;
+        }
 
         $this->notificaciones->paraUsuario(
             $reserva->cliente,

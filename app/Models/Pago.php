@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enumerados\EstadoPago;
 use App\Enumerados\MetodoPago;
+use App\Models\Concerns\SeReleeBloqueado;
 use Database\Factories\PagoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Pago extends Model
 {
     /** @use HasFactory<PagoFactory> */
-    use HasFactory;
+    use HasFactory, SeReleeBloqueado;
 
     protected $table = 'pago';
 

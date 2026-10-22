@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Closure;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Marca de idempotencia para eventos de webhook ya procesados (HU-23):
@@ -26,20 +28,34 @@ class WebhookEvento extends Model
         ];
     }
 
-    // Registra el evento si es la primera vez que se ve; false si ya se había procesado
-    public static function registrarSiEsNuevo(string $pasarela, string $eventoId, string $tipo): bool
+    /**
+     * Ejecuta `$accion` la primera vez que llega el evento; false si ya se procesó.
+     *
+     * La fila del evento se bloquea durante el procesamiento y solo se marca
+     * como procesada si `$accion` termina bien: si falla, la transacción se
+     * revierte, la excepción sube (Stripe recibe un 500) y el reintento de
+     * Stripe vuelve a aplicarlo en vez de perderse.
+     */
+    public static function procesarUnaVez(string $pasarela, string $eventoId, string $tipo, Closure $accion): bool
     {
-        $evento = self::firstOrCreate(
-            ['pasarela' => $pasarela, 'evento_id' => $eventoId],
-            ['tipo' => $tipo],
-        );
+        self::firstOrCreate(['pasarela' => $pasarela, 'evento_id' => $eventoId], ['tipo' => $tipo]);
 
-        if ($evento->procesado_en !== null) {
-            return false;
-        }
+        return DB::transaction(function () use ($pasarela, $eventoId, $accion) {
+            $evento = self::query()
+                ->where('pasarela', $pasarela)
+                ->where('evento_id', $eventoId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $evento->update(['procesado_en' => now()]);
+            if ($evento->procesado_en !== null) {
+                return false;
+            }
 
-        return true;
+            $accion();
+
+            $evento->update(['procesado_en' => now()]);
+
+            return true;
+        });
     }
 }

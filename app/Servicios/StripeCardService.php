@@ -2,17 +2,13 @@
 
 namespace App\Servicios;
 
-use App\Enumerados\EstadoPago;
-use App\Enumerados\EstadoReserva;
 use App\Enumerados\MetodoPago;
 use App\Enumerados\PasarelaPago;
-use App\Models\HistorialReserva;
 use App\Models\MetodoPagoGuardado;
 use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\CardException;
@@ -127,33 +123,14 @@ class StripeCardService
      */
     public function pagarConTarjeta(Reserva $reserva, MetodoPagoGuardado $tarjeta): array
     {
-        if (! $reserva->admiteNuevoPago()) {
-            throw ValidationException::withMessages(['reserva' => 'Esta reserva no admite registrar un pago en este momento.']);
-        }
-
-        $pago = DB::transaction(function () use ($reserva, $tarjeta) {
-            $pago = Pago::create([
-                'reserva_id' => $reserva->id,
-                'metodo_pago' => MetodoPago::TarjetaCredito,
-                'monto' => $reserva->monto_reserva,
-                'referencia' => $tarjeta->descripcion,
-                'estado' => EstadoPago::Procesando,
-            ]);
-
-            $anterior = $reserva->estado;
-            $reserva->update(['estado' => EstadoReserva::ProcesandoPago]);
-
-            HistorialReserva::registrar(
-                $reserva,
-                $anterior->value,
-                EstadoReserva::ProcesandoPago->value,
-                "Pago iniciado con tarjeta guardada ({$tarjeta->descripcion}).",
-                $reserva->usuario_id,
-                request()?->ip(),
-            );
-
-            return $pago;
-        });
+        // El pago queda creado (y la reserva bloqueada para otros intentos)
+        // antes de llamar a Stripe: un doble clic no puede cobrar dos veces.
+        $pago = $this->pagos->iniciar(
+            $reserva,
+            MetodoPago::TarjetaCredito,
+            $tarjeta->descripcion,
+            "Pago iniciado con tarjeta guardada ({$tarjeta->descripcion}).",
+        );
 
         try {
             $intent = $this->stripe->paymentIntents->create([

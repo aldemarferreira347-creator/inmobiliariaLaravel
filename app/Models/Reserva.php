@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enumerados\EstadoContrato;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
+use App\Models\Concerns\SeReleeBloqueado;
 use Database\Factories\ReservaFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,7 +26,7 @@ use Illuminate\Support\Str;
 class Reserva extends Model
 {
     /** @use HasFactory<ReservaFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, SeReleeBloqueado, SoftDeletes;
 
     /** Horas que tiene el cliente para pagar antes de que la reserva expire */
     public const HORAS_PARA_PAGAR = 24;
