@@ -26,8 +26,9 @@ class CatalogoTest extends TestCase
 
     public function test_los_filtros_acotan_el_resultado(): void
     {
-        $enNeiva = Inmueble::factory()->deVenta()->create(['ciudad' => 'Neiva']);
-        $enBogota = Inmueble::factory()->deVenta()->create(['ciudad' => 'Bogotá']);
+        // Títulos explícitos: los de la factory se repiten y harían el assertDontSee aleatorio
+        $enNeiva = Inmueble::factory()->deVenta()->create(['ciudad' => 'Neiva', 'titulo' => 'Casa del centro de Neiva']);
+        $enBogota = Inmueble::factory()->deVenta()->create(['ciudad' => 'Bogotá', 'titulo' => 'Apartamento en Chapinero']);
 
         $this->get(route('inmuebles.index', ['ubicacion' => 'Neiva']))
             ->assertOk()
