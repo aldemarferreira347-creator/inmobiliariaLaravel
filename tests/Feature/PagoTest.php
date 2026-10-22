@@ -179,6 +179,26 @@ class PagoTest extends TestCase
         $this->assertNotNull(WebhookEvento::where('evento_id', 'evt_test_1')->value('procesado_en'));
     }
 
+    public function test_un_fallo_de_stripe_sobre_un_pago_ya_no_revisable_no_rompe_el_webhook(): void
+    {
+        $pago = $this->reservaConPago();
+        $pago->update(['referencia_pasarela' => 'pi_test_9']);
+        $pago->reserva->update(['estado' => EstadoReserva::Cancelada]);
+        config(['services.stripe.webhook_secret' => 'whsec_test']);
+
+        $evento = json_encode([
+            'id' => 'evt_test_9',
+            'object' => 'event',
+            'type' => 'payment_intent.payment_failed',
+            'data' => ['object' => ['id' => 'pi_test_9', 'object' => 'payment_intent', 'status' => 'requires_payment_method']],
+        ]);
+        $firma = ['Stripe-Signature' => 't='.time().',v1='.hash_hmac('sha256', time().'.'.$evento, 'whsec_test')];
+
+        $this->call('POST', route('stripe.webhook'), [], [], [], $this->cabeceras($firma), $evento)->assertOk();
+
+        $this->assertSame(EstadoReserva::Cancelada, $pago->reserva->refresh()->estado);
+    }
+
     /** @param  array<string, string>  $cabeceras */
     private function cabeceras(array $cabeceras): array
     {

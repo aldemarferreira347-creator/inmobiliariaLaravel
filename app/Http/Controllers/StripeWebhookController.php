@@ -101,6 +101,10 @@ class StripeWebhookController extends Controller
 
         $motivo = $intent->last_payment_error->message ?? 'Pago rechazado por la pasarela.';
 
-        $this->pagos->rechazar($pago, null, $motivo);
+        try {
+            $this->pagos->rechazar($pago, null, $motivo);
+        } catch (ValidationException) {
+            // La reserva ya se cerró por otra vía: no queda nada que rechazar
+        }
     }
 }
