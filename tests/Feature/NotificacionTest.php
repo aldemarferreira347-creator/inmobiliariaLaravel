@@ -38,6 +38,46 @@ class NotificacionTest extends TestCase
             ->assertSee('Contenido de prueba.');
     }
 
+    public function test_el_cliente_no_recibe_enlaces_al_panel(): void
+    {
+        $cliente = User::factory()->create();
+
+        foreach (['reserva', 'contrato', 'cita'] as $tipo) {
+            Notificacion::create([
+                'usuario_id' => $cliente->id,
+                'titulo' => "Aviso de {$tipo}",
+                'mensaje' => 'Detalle.',
+                'tipo' => 'info',
+                'referencia_tipo' => $tipo,
+                'referencia_id' => 7,
+            ]);
+        }
+
+        $this->actingAs($cliente)
+            ->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertDontSee('/admin/')
+            ->assertSee(route('reservas.show', 7))
+            ->assertSee(route('citas.index'));
+    }
+
+    public function test_el_administrador_enlaza_al_detalle_del_panel(): void
+    {
+        $admin = User::factory()->administrador()->create();
+        Notificacion::create([
+            'usuario_id' => $admin->id,
+            'titulo' => 'Contrato vencido',
+            'mensaje' => 'Detalle.',
+            'tipo' => 'info',
+            'referencia_tipo' => 'contrato',
+            'referencia_id' => 3,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('notificaciones.index'))
+            ->assertSee(route('admin.contratos.show', 3));
+    }
+
     public function test_nadie_marca_notificaciones_ajenas(): void
     {
         $notificacion = Notificacion::create([

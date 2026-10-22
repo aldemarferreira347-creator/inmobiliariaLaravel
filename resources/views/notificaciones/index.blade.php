@@ -91,19 +91,8 @@
                                         {{ $notificacion->creado_en->format('d/m/Y · H:i') }}
                                     </span>
 
-                                    @php
-                                        // Cada tipo de referencia enlaza a la ruta donde se consulta esa entidad
-                                        $rutaEnlace = match ($notificacion->referencia_tipo) {
-                                            'reserva' => 'reservas.show',
-                                            'contrato' => 'admin.contratos.show',
-                                            'inmueble' => 'inmuebles.show',
-                                            'conversacion' => 'mensajes.show',
-                                            default => null,
-                                        };
-                                    @endphp
-
-                                    @if ($rutaEnlace && $notificacion->referencia_id)
-                                        <a href="{{ route($rutaEnlace, $notificacion->referencia_id) }}" class="btn-text">
+                                    @if ($enlace = \App\Soporte\EnlaceNotificacion::para($notificacion, auth()->user()))
+                                        <a href="{{ $enlace }}" class="btn-text">
                                             Ver detalle <x-icon name="arrow-right" class="h-3.5 w-3.5" />
                                         </a>
                                     @endif
