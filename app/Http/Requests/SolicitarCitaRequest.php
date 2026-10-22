@@ -27,6 +27,11 @@ class SolicitarCitaRequest extends FormRequest
     public function withValidator(ValidatorContract $validator): void
     {
         $validator->after(function (ValidatorContract $validator) {
+            // Con fecha u hora mal formadas ya hay errores de formato que mostrar
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             $fechaHora = $this->fechaHoraCruda();
             if ($fechaHora === null) {
                 return;

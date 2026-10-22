@@ -98,11 +98,13 @@ class VentaService
 
     public function adjuntarEscritura(Venta $venta, UploadedFile $archivo): void
     {
-        $this->archivos->eliminar($venta->escritura_ruta);
+        $anterior = $venta->escritura_ruta;
 
+        // Se guarda la nueva antes de borrar la anterior: si falla la subida no se pierde la escritura vigente
         $ruta = $this->archivos->guardar($archivo, 'escrituras', "escritura_{$venta->id}_".now()->timestamp);
 
         $venta->update(['escritura_ruta' => $ruta]);
+        $this->archivos->eliminar($anterior);
     }
 
     /**

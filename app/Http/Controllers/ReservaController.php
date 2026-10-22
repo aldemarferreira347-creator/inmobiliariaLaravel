@@ -71,7 +71,8 @@ class ReservaController extends Controller
 
         return view('reservas.show', [
             'reserva' => $reserva->load(['inmueble', 'pagos.revisor', 'historial.autor', 'contrato']),
-            'tarjetas' => $this->tarjetas->listar($reserva->cliente),
+            // Las tarjetas guardadas solo se consultan para su dueño; el personal no las necesita
+            'tarjetas' => $reserva->usuario_id === auth()->id() ? $this->tarjetas->listar($reserva->cliente) : collect(),
             'stripeKey' => config('services.stripe.key'),
         ]);
     }

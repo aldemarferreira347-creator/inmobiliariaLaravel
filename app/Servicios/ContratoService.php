@@ -67,11 +67,13 @@ class ContratoService
     // HU-17.2: adjunta el PDF firmado, reemplazando el anterior si lo hubiera
     public function adjuntarDocumento(Contrato $contrato, UploadedFile $archivo): void
     {
-        $this->archivos->eliminar($contrato->archivo_ruta);
+        $anterior = $contrato->archivo_ruta;
 
+        // Se guarda el nuevo antes de borrar el anterior: si falla la subida no se pierde el documento vigente
         $ruta = $this->archivos->guardar($archivo, 'contratos', "contrato_{$contrato->id}_".now()->timestamp);
 
         $contrato->update(['archivo_ruta' => $ruta]);
+        $this->archivos->eliminar($anterior);
     }
 
     // HU-17.4: rescindir libera el inmueble y avisa al cliente

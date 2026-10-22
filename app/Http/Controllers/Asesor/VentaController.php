@@ -89,7 +89,7 @@ class VentaController extends Controller
     /** Adjunta el PDF de la escritura de una venta cerrada. */
     public function subirEscritura(Request $request, Venta $venta): RedirectResponse
     {
-        $this->authorize('update', $venta);
+        $this->authorize('adjuntarEscritura', $venta);
 
         $request->validate([
             'escritura' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:5120'],

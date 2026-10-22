@@ -133,6 +133,12 @@ class CitaService
     // El asesor propietario corrige el texto de una observación ya registrada
     public function editarObservacion(Cita $cita, User $asesor, string $observaciones): void
     {
+        if ($cita->estado !== EstadoCita::Realizada) {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede editar la observación de una visita ya realizada.',
+            ]);
+        }
+
         DB::transaction(function () use ($cita, $asesor, $observaciones) {
             ObservacionCita::guardarPara($cita, $asesor, $observaciones);
             CitaHistorial::registrar($cita, $asesor, 'OBSERVACION_EDITADA', 'El asesor actualizó las observaciones de la visita.');

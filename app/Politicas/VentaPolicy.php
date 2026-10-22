@@ -36,6 +36,13 @@ class VentaPolicy
             && ($usuario->esAdministrador() || $venta->asesor_id === $usuario->id);
     }
 
+    // La escritura se firma al cerrar la venta: se adjunta también en una venta cerrada, nunca en una cancelada
+    public function adjuntarEscritura(User $usuario, Venta $venta): bool
+    {
+        return $venta->estado !== EstadoVenta::Cancelada
+            && ($usuario->esAdministrador() || $venta->asesor_id === $usuario->id);
+    }
+
     public function descargarEscritura(User $usuario, Venta $venta): bool
     {
         return $venta->tieneEscritura() && $this->view($usuario, $venta);

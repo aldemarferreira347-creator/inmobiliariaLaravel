@@ -72,11 +72,22 @@ class InmuebleRequest extends FormRequest
                 $inmueble = $this->inmueble;
                 $estado = EstadoInmueble::tryFrom((string) $this->input('estado'));
 
-                if ($inmueble === null || $estado === null || $inmueble->admiteEstado($estado)) {
+                if ($estado === null) {
                     return;
                 }
 
-                $validador->errors()->add('estado', $inmueble->motivoEstadoNoAdmitido($estado));
+                // Un inmueble nuevo no tiene reservas ni contratos que respalden otro estado
+                if ($inmueble === null) {
+                    if ($estado !== EstadoInmueble::Disponible) {
+                        $validador->errors()->add('estado', 'Un inmueble nuevo solo puede registrarse como Disponible.');
+                    }
+
+                    return;
+                }
+
+                if (! $inmueble->admiteEstado($estado)) {
+                    $validador->errors()->add('estado', $inmueble->motivoEstadoNoAdmitido($estado));
+                }
             },
         ];
     }

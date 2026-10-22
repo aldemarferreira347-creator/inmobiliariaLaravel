@@ -74,7 +74,7 @@
                     <p class="subtitle">No se ha subido la escritura todavía.</p>
                 @endif
 
-                @can('update', $venta)
+                @can('adjuntarEscritura', $venta)
                     <form method="POST" action="{{ route('asesor.ventas.escritura', $venta) }}"
                         enctype="multipart/form-data" class="form-actions-row form-mt-8">
                         @csrf

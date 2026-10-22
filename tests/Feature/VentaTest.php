@@ -9,6 +9,8 @@ use App\Models\Inmueble;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class VentaTest extends TestCase
@@ -100,6 +102,32 @@ class VentaTest extends TestCase
 
         $this->assertSame(EstadoVenta::Cerrada, $venta->refresh()->estado);
         $this->assertSame(EstadoInmueble::Ocupado, $venta->inmueble->refresh()->estado);
+    }
+
+    public function test_se_sube_la_escritura_de_una_venta_cerrada(): void
+    {
+        Storage::fake('local');
+        $venta = Venta::factory()->create(['estado' => EstadoVenta::Cerrada]);
+
+        $this->actingAs($venta->asesor)
+            ->post(route('asesor.ventas.escritura', $venta), [
+                'escritura' => UploadedFile::fake()->create('escritura.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($venta->refresh()->tieneEscritura());
+    }
+
+    public function test_no_se_sube_la_escritura_de_una_venta_cancelada(): void
+    {
+        Storage::fake('local');
+        $venta = Venta::factory()->create(['estado' => EstadoVenta::Cancelada]);
+
+        $this->actingAs($venta->asesor)
+            ->post(route('asesor.ventas.escritura', $venta), [
+                'escritura' => UploadedFile::fake()->create('escritura.pdf', 100, 'application/pdf'),
+            ])
+            ->assertForbidden();
     }
 
     public function test_cancelar_la_venta_devuelve_el_inmueble_al_catalogo(): void

@@ -95,6 +95,17 @@ class GestionInmueblesTest extends TestCase
         $this->assertSame(EstadoInmueble::Disponible, $inmueble->refresh()->estado);
     }
 
+    public function test_no_se_crea_un_inmueble_ocupado_sin_respaldo(): void
+    {
+        foreach ([EstadoInmueble::Reservado, EstadoInmueble::Ocupado] as $estado) {
+            $this->actingAs($this->administrador())
+                ->post(route('admin.inmuebles.store'), $this->datosValidos(['estado' => $estado->value]))
+                ->assertSessionHasErrors('estado');
+        }
+
+        $this->assertSame(0, Inmueble::count());
+    }
+
     public function test_se_puede_marcar_reservado_cuando_existe_una_reserva_en_proceso(): void
     {
         $inmueble = Inmueble::factory()->deVenta()->create();
