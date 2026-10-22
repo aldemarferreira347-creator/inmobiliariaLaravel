@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoVenta;
+use App\Enumerados\ModalidadInmueble;
 use App\Models\Inmueble;
+use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
 use Tests\TestCase;
@@ -44,6 +46,34 @@ class VentaTest extends TestCase
     public function test_no_se_registra_una_venta_sobre_un_inmueble_ocupado(): void
     {
         $inmueble = Inmueble::factory()->deVenta()->create(['estado' => EstadoInmueble::Ocupado]);
+
+        $this->actingAs(User::factory()->asesor()->create())
+            ->post(route('asesor.ventas.store'), $this->datos($inmueble, User::factory()->create()))
+            ->assertSessionHasErrors('inmueble_id');
+    }
+
+    public function test_se_registra_la_venta_de_un_inmueble_reservado_para_compra_por_el_mismo_cliente(): void
+    {
+        $inmueble = Inmueble::factory()->deVenta()->create(['estado' => EstadoInmueble::Reservado]);
+        $reserva = Reserva::factory()->confirmada()->create([
+            'inmueble_id' => $inmueble->id,
+            'modalidad' => ModalidadInmueble::Venta,
+        ]);
+
+        $this->actingAs(User::factory()->asesor()->create())
+            ->post(route('asesor.ventas.store'), $this->datos($inmueble, $reserva->cliente))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, Venta::count());
+    }
+
+    public function test_no_se_registra_la_venta_si_lo_reservo_otro_cliente(): void
+    {
+        $inmueble = Inmueble::factory()->deVenta()->create(['estado' => EstadoInmueble::Reservado]);
+        Reserva::factory()->confirmada()->create([
+            'inmueble_id' => $inmueble->id,
+            'modalidad' => ModalidadInmueble::Venta,
+        ]);
 
         $this->actingAs(User::factory()->asesor()->create())
             ->post(route('asesor.ventas.store'), $this->datos($inmueble, User::factory()->create()))

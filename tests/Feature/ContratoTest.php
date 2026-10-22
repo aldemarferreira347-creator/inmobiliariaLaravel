@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enumerados\EstadoContrato;
 use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\ModalidadInmueble;
 use App\Models\Contrato;
 use App\Models\HistorialReserva;
 use App\Models\Inmueble;
@@ -40,6 +41,21 @@ class ContratoTest extends TestCase
             'fecha_fin' => now()->addYear()->format('Y-m-d'),
             'valor_mensual' => 1_500_000,
         ];
+    }
+
+    public function test_no_se_emite_contrato_sobre_una_reserva_de_compra(): void
+    {
+        $reserva = $this->reservaConfirmada();
+        $reserva->update(['modalidad' => ModalidadInmueble::Venta]);
+
+        $admin = User::factory()->administrador()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.contratos.store'), $this->datos($reserva))
+            ->assertSessionHasErrors('reserva_id');
+
+        $this->assertSame(0, Contrato::count());
+        $this->actingAs($admin)->get(route('admin.contratos.create'))->assertDontSee($reserva->codigo_reserva);
     }
 
     public function test_el_contrato_ocupa_el_inmueble(): void

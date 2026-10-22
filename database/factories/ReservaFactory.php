@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\ModalidadInmueble;
 use App\Models\Inmueble;
 use App\Models\Reserva;
 use App\Models\User;
@@ -19,6 +20,7 @@ class ReservaFactory extends Factory
             'codigo_reserva' => Reserva::generarCodigo(),
             'inmueble_id' => Inmueble::factory(),
             'usuario_id' => User::factory(),
+            'modalidad' => ModalidadInmueble::Arriendo,
             'monto_reserva' => fake()->numberBetween(800, 4_000) * 1_000,
             'estado' => EstadoReserva::PendientePago,
             'expira_en' => now()->addHours(Reserva::HORAS_PARA_PAGAR),

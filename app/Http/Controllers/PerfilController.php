@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enumerados\EstadoReserva;
-use App\Enumerados\ModalidadInmueble;
 use App\Http\Requests\FotoPerfilRequest;
 use App\Http\Requests\PerfilUpdateRequest;
+use App\Models\Reserva;
+use App\Models\User;
+use App\Models\Venta;
 use App\Servicios\AvatarService;
 use App\Servicios\StripeCardService;
 use Illuminate\Http\RedirectResponse;
@@ -15,9 +17,9 @@ use Illuminate\View\View;
 /**
  * Perfil del usuario autenticado (HU-25).
  *
- * Modelo principal: {@see \App\Models\User}. El manejo del archivo de foto
+ * Modelo principal: {@see User}. El manejo del archivo de foto
  * se delega en {@see AvatarService}; `misArriendos()` y `misCompras()`
- * cruzan además con {@see \App\Models\Reserva} y {@see \App\Models\Venta}.
+ * cruzan además con {@see Reserva} y {@see Venta}.
  */
 class PerfilController extends Controller
 {
@@ -42,7 +44,7 @@ class PerfilController extends Controller
             'totalFavoritos' => $usuario->favoritos()->count(),
             'reservas' => $usuario->reservas()
                 ->where('estado', EstadoReserva::Confirmada)
-                ->whereHas('inmueble', fn ($q) => $q->whereIn('modalidad', [ModalidadInmueble::Arriendo, ModalidadInmueble::Ambos]))
+                ->deArriendo()
                 ->with('inmueble', 'contrato')
                 ->recientes()
                 ->get(),
@@ -90,7 +92,7 @@ class PerfilController extends Controller
             'reservas' => $request->user()
                 ->reservas()
                 ->where('estado', EstadoReserva::Confirmada)
-                ->whereHas('inmueble', fn ($q) => $q->whereIn('modalidad', [ModalidadInmueble::Arriendo, ModalidadInmueble::Ambos]))
+                ->deArriendo()
                 ->with('inmueble', 'contrato')
                 ->recientes()
                 ->get(),

@@ -5,6 +5,7 @@ namespace App\Servicios;
 use App\Enumerados\EstadoContrato;
 use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoNotificacion;
 use App\Models\Contrato;
 use App\Models\Reserva;
@@ -140,6 +141,12 @@ class ContratoService
         if ($reserva->contrato()->exists()) {
             throw ValidationException::withMessages([
                 'reserva_id' => 'Esta reserva ya tiene un contrato emitido.',
+            ]);
+        }
+
+        if ($reserva->modalidad === ModalidadInmueble::Venta) {
+            throw ValidationException::withMessages([
+                'reserva_id' => 'Esta reserva es de compra: se formaliza como venta, no con un contrato de arriendo.',
             ]);
         }
 

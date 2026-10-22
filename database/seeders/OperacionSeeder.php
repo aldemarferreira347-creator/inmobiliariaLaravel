@@ -6,6 +6,7 @@ use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
 use App\Enumerados\MetodoPago;
+use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\RolUsuario;
 use App\Enumerados\TipoNotificacion;
 use App\Models\Contrato;
@@ -47,6 +48,7 @@ class OperacionSeeder extends Seeder
             'codigo_reserva' => Reserva::generarCodigo(),
             'inmueble_id' => $inmueble->id,
             'usuario_id' => $cliente->id,
+            'modalidad' => $inmueble->precio_arrendamiento !== null ? ModalidadInmueble::Arriendo : ModalidadInmueble::Venta,
             'monto_reserva' => $inmueble->precio_arrendamiento ?? $inmueble->precio_venta ?? 1_200_000,
             'estado' => EstadoReserva::PendientePago,
             'expira_en' => now()->addHours(Reserva::HORAS_PARA_PAGAR),
@@ -71,6 +73,7 @@ class OperacionSeeder extends Seeder
             'codigo_reserva' => Reserva::generarCodigo(),
             'inmueble_id' => $inmueble->id,
             'usuario_id' => $cliente->id,
+            'modalidad' => ModalidadInmueble::Arriendo,
             'monto_reserva' => $inmueble->precio_arrendamiento ?? 1_500_000,
             'estado' => EstadoReserva::Confirmada,
             'expira_en' => now()->subDays(3),

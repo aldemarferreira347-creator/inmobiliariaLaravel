@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enumerados\EstadoContrato;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\ModalidadInmueble;
 use App\Models\Concerns\SeReleeBloqueado;
 use Database\Factories\ReservaFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,6 +40,7 @@ class Reserva extends Model
         'usuario_id',
         'asesor_id',
         'monto_reserva',
+        'modalidad',
         'estado',
         'expira_en',
         'notas_cliente',
@@ -48,6 +50,7 @@ class Reserva extends Model
     {
         return [
             'estado' => EstadoReserva::class,
+            'modalidad' => ModalidadInmueble::class,
             'monto_reserva' => 'decimal:2',
             'expira_en' => 'datetime',
         ];
@@ -100,6 +103,12 @@ class Reserva extends Model
     public function scopeRecientes(Builder $query): Builder
     {
         return $query->latest('created_at');
+    }
+
+    // Reservas que se formalizan con contrato de arriendo (las de compra van por Venta)
+    public function scopeDeArriendo(Builder $query): Builder
+    {
+        return $query->where('modalidad', ModalidadInmueble::Arriendo);
     }
 
     public function scopeEnEstado(Builder $query, EstadoReserva ...$estados): Builder

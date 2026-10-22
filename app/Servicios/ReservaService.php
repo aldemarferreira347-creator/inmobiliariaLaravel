@@ -46,12 +46,14 @@ class ReservaService
             $bloqueado = Inmueble::whereKey($inmueble->getKey())->lockForUpdate()->firstOrFail();
 
             $this->asegurarQueEsReservable($bloqueado);
+            $elegida = $this->modalidadElegida($bloqueado, $modalidad);
 
             $reserva = Reserva::create([
                 'codigo_reserva' => Reserva::generarCodigo(),
                 'inmueble_id' => $bloqueado->id,
                 'usuario_id' => $cliente->id,
-                'monto_reserva' => $this->montoDeReserva($bloqueado, $modalidad),
+                'modalidad' => $elegida,
+                'monto_reserva' => $this->montoDeReserva($bloqueado, $elegida),
                 'estado' => EstadoReserva::PendientePago,
                 'expira_en' => now()->addHours(Reserva::HORAS_PARA_PAGAR),
                 'notas_cliente' => $notas,
@@ -236,14 +238,15 @@ class ReservaService
     }
 
     /**
-     * Precio real del inmueble según la modalidad reservada.
+     * Modalidad que se reserva: la única del inmueble o, si admite ambas, la
+     * que pidió el cliente.
      *
      * @throws ValidationException
      */
-    private function montoDeReserva(Inmueble $inmueble, ?ModalidadInmueble $modalidad): float
+    private function modalidadElegida(Inmueble $inmueble, ?ModalidadInmueble $pedida): ModalidadInmueble
     {
         $elegida = $inmueble->modalidad === ModalidadInmueble::Ambos
-            ? $modalidad
+            ? $pedida
             : $inmueble->modalidad;
 
         if ($elegida === null || $elegida === ModalidadInmueble::Ambos) {
@@ -252,6 +255,16 @@ class ReservaService
             ]);
         }
 
+        return $elegida;
+    }
+
+    /**
+     * Precio real del inmueble según la modalidad reservada.
+     *
+     * @throws ValidationException
+     */
+    private function montoDeReserva(Inmueble $inmueble, ModalidadInmueble $elegida): float
+    {
         $monto = $elegida === ModalidadInmueble::Venta
             ? $inmueble->precio_venta
             : $inmueble->precio_arrendamiento;

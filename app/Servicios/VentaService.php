@@ -3,7 +3,9 @@
 namespace App\Servicios;
 
 use App\Enumerados\EstadoInmueble;
+use App\Enumerados\EstadoReserva;
 use App\Enumerados\EstadoVenta;
+use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoNotificacion;
 use App\Models\Inmueble;
 use App\Models\User;
@@ -31,7 +33,7 @@ class VentaService
         $venta = DB::transaction(function () use ($datos, $asesor) {
             $inmueble = Inmueble::whereKey($datos['inmueble_id'])->lockForUpdate()->firstOrFail();
 
-            $this->asegurarQueEsVendible($inmueble);
+            $this->asegurarQueEsVendible($inmueble, (int) $datos['usuario_id']);
 
             $venta = Venta::create([...$datos, 'asesor_id' => $asesor->id, 'estado' => EstadoVenta::EnProceso]);
 
@@ -106,13 +108,28 @@ class VentaService
     /**
      * @throws ValidationException
      */
-    private function asegurarQueEsVendible(Inmueble $inmueble): void
+    private function asegurarQueEsVendible(Inmueble $inmueble, int $compradorId): void
     {
-        if ($inmueble->estado !== EstadoInmueble::Disponible) {
+        if ($inmueble->estado !== EstadoInmueble::Disponible && ! $this->loReservoElComprador($inmueble, $compradorId)) {
             throw ValidationException::withMessages([
                 'inmueble_id' => 'Este inmueble no está disponible para iniciar una venta.',
             ]);
         }
+    }
+
+    /**
+     * Un inmueble Reservado solo se vende al cliente que lo reservó para
+     * compra: sin esto, pagar la reserva dejaba el inmueble bloqueado para el
+     * propio comprador.
+     */
+    private function loReservoElComprador(Inmueble $inmueble, int $compradorId): bool
+    {
+        return $inmueble->estado === EstadoInmueble::Reservado
+            && $inmueble->reservas()
+                ->where('usuario_id', $compradorId)
+                ->where('estado', EstadoReserva::Confirmada)
+                ->where('modalidad', ModalidadInmueble::Venta)
+                ->exists();
     }
 
     /**

@@ -77,6 +77,22 @@ class ReservaTest extends TestCase
         $this->assertSame('300000000.00', Reserva::firstOrFail()->monto_reserva);
     }
 
+    public function test_la_reserva_guarda_la_modalidad_elegida(): void
+    {
+        $ambos = Inmueble::factory()->create([
+            'modalidad' => ModalidadInmueble::Ambos,
+            'precio_venta' => 300_000_000,
+            'precio_arrendamiento' => 1_500_000,
+        ]);
+        $this->solicitar(User::factory()->create(), $ambos, ['modalidad' => ModalidadInmueble::Arriendo->value]);
+
+        $soloVenta = Inmueble::factory()->deVenta()->create();
+        $this->solicitar(User::factory()->create(), $soloVenta);
+
+        $this->assertSame(ModalidadInmueble::Arriendo, Reserva::where('inmueble_id', $ambos->id)->firstOrFail()->modalidad);
+        $this->assertSame(ModalidadInmueble::Venta, Reserva::where('inmueble_id', $soloVenta->id)->firstOrFail()->modalidad);
+    }
+
     public function test_hay_que_aceptar_las_condiciones(): void
     {
         $inmueble = Inmueble::factory()->deArriendo()->create();

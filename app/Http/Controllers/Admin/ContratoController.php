@@ -97,6 +97,7 @@ class ContratoController extends Controller
     {
         return Reserva::query()
             ->with('inmueble', 'cliente')
+            ->deArriendo()
             ->where('estado', EstadoReserva::Confirmada)
             ->whereDoesntHave('contrato')
             ->recientes()
