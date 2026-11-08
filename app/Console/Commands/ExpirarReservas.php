@@ -33,6 +33,21 @@ class ExpirarReservas extends Command
             }
         }
 
+        // RN-18: confirmadas que no se formalizaron en 7 días
+        $sinContrato = Reserva::sinFormalizar()->with('inmueble')->get()
+            ->filter(fn (Reserva $reserva) => $reserva->plazoDeContratoVencido());
+        $vencidas = $vencidas->concat($sinContrato);
+
+        foreach ($sinContrato as $reserva) {
+            try {
+                $reservas->expirarSinContrato($reserva);
+                $expiradas++;
+            } catch (Throwable $e) {
+                report($e);
+                $this->error("No se pudo expirar la reserva {$reserva->codigo_reserva}: {$e->getMessage()}");
+            }
+        }
+
         $this->info("Reservas expiradas: {$expiradas} de {$vencidas->count()}.");
 
         return self::SUCCESS;

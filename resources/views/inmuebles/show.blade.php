@@ -148,9 +148,14 @@
                                     </p>
                                 @endcan
                             @else
-                                <a href="{{ route('login') }}" class="btn-reservar-inmueble btn-reservar--login">
-                                    <x-icon name="key" class="h-5 w-5" /> Inicia sesión para reservar
-                                </a>
+                                {{-- HU-07.2: el invitado pulsa «Reservar» y la ruta protegida lo envía al login --}}
+                                <form method="POST" action="{{ route('reservas.store') }}">
+                                    @csrf
+                                    <input type="hidden" name="inmueble_id" value="{{ $inmueble->id }}">
+                                    <button type="submit" class="btn-reservar-inmueble">
+                                        <x-icon name="lock" class="h-5 w-5" /> Reservar
+                                    </button>
+                                </form>
                                 <p class="reserva-cta-hint">Necesitas una cuenta para iniciar una reserva.</p>
                             @endauth
                         </div>

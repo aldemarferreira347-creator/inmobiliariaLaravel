@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enumerados\EstadoContrato;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\EstadoVenta;
 use App\Enumerados\ModalidadInmueble;
 use App\Models\Concerns\SeReleeBloqueado;
 use Database\Factories\ReservaFactory;
@@ -111,6 +112,18 @@ class Reserva extends Model
         return $query->where('modalidad', ModalidadInmueble::Arriendo);
     }
 
+    // Confirmadas que aún no se formalizaron: sin contrato de arriendo ni venta del cliente sobre el inmueble (RN-18)
+    public function scopeSinFormalizar(Builder $query): Builder
+    {
+        return $query
+            ->where('estado', EstadoReserva::Confirmada)
+            ->whereDoesntHave('contratos')
+            ->whereNotExists(fn ($venta) => $venta->from('venta')
+                ->whereColumn('venta.inmueble_id', 'reserva.inmueble_id')
+                ->whereColumn('venta.usuario_id', 'reserva.usuario_id')
+                ->where('venta.estado', '!=', EstadoVenta::Cancelada->value));
+    }
+
     public function scopeEnEstado(Builder $query, EstadoReserva ...$estados): Builder
     {
         return $query->whereIn('estado', $estados);
@@ -157,9 +170,23 @@ class Reserva extends Model
      */
     public function confirmadaEn(): ?Carbon
     {
-        return $this->historial()
+        $momento = $this->historial()
             ->where('estado_nuevo', EstadoReserva::Confirmada->value)
             ->value('creado_en');
+
+        return $momento === null ? null : Carbon::parse($momento);
+    }
+
+    /**
+     * Pasó el plazo de RN-18 (7 días naturales desde la confirmación) sin que
+     * se formalizara la reserva. Sin fila de historial se cuenta desde la
+     * última modificación de la reserva.
+     */
+    public function plazoDeContratoVencido(): bool
+    {
+        $desde = $this->confirmadaEn() ?? $this->updated_at;
+
+        return $desde !== null && $desde->copy()->addDays(Contrato::DIAS_PARA_EMITIR)->isPast();
     }
 
     public function tieneContratoVigente(): bool

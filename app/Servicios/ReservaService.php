@@ -6,7 +6,9 @@ use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
 use App\Enumerados\ModalidadInmueble;
+use App\Enumerados\RolUsuario;
 use App\Enumerados\TipoNotificacion;
+use App\Models\Contrato;
 use App\Models\HistorialReserva;
 use App\Models\Inmueble;
 use App\Models\Pago;
@@ -28,6 +30,8 @@ use Illuminate\Validation\ValidationException;
  */
 class ReservaService
 {
+    private const MENSAJE_RESERVA_DUPLICADA = 'Ya tienes una reserva activa para este inmueble';
+
     public function __construct(private readonly NotificacionService $notificaciones) {}
 
     /**
@@ -45,7 +49,7 @@ class ReservaService
             // Bloqueo pesimista: evita que dos clientes reserven a la vez
             $bloqueado = Inmueble::whereKey($inmueble->getKey())->lockForUpdate()->firstOrFail();
 
-            $this->asegurarQueEsReservable($bloqueado);
+            $this->asegurarQueEsReservable($bloqueado, $cliente);
             $elegida = $this->modalidadElegida($bloqueado, $modalidad);
 
             $reserva = Reserva::create([
@@ -196,6 +200,52 @@ class ReservaService
         );
     }
 
+    /**
+     * RN-18 / HU-09.2: una reserva confirmada sin contrato ni venta pasados
+     * 7 días naturales desde la confirmación expira y libera el inmueble.
+     */
+    public function expirarSinContrato(Reserva $reserva): void
+    {
+        $expirada = DB::transaction(function () use ($reserva) {
+            $actual = $reserva->releerBloqueado();
+
+            if ($actual->estado !== EstadoReserva::Confirmada
+                || ! Reserva::sinFormalizar()->whereKey($reserva->id)->exists()
+                || ! $reserva->plazoDeContratoVencido()) {
+                return false;
+            }
+
+            $this->transicionar(
+                $reserva,
+                EstadoReserva::Expirada,
+                'Expirada automáticamente: venció el plazo de '.Contrato::DIAS_PARA_EMITIR.' días para formalizar la reserva.',
+                [EstadoReserva::Confirmada],
+            );
+
+            $this->liberarInmueble($reserva);
+
+            return true;
+        });
+
+        if (! $expirada) {
+            return;
+        }
+
+        $mensaje = "La reserva {$reserva->codigo_reserva} expiró porque no se formalizó en ".Contrato::DIAS_PARA_EMITIR.' días. El inmueble vuelve a estar disponible.';
+
+        $this->notificaciones->paraUsuario(
+            $reserva->cliente,
+            'Reserva expirada',
+            $mensaje,
+            TipoNotificacion::Aviso,
+            'reserva',
+            $reserva->id,
+            conCorreo: true,
+        );
+
+        $this->notificaciones->paraRol(RolUsuario::Administrador, 'Reserva expirada', $mensaje, TipoNotificacion::Aviso);
+    }
+
     // ----------------------------------------------------------------
     // Apoyo
     // ----------------------------------------------------------------
@@ -261,18 +311,38 @@ class ReservaService
         Reserva::whereKey($reserva->id)->update(['estado' => EstadoReserva::Cancelada->value]);
 
         throw ValidationException::withMessages([
-            'inmueble' => 'Este inmueble ya tiene una reserva en proceso.',
+            'inmueble' => $this->tieneReservaActiva($reserva->inmueble_id, $reserva->usuario_id, $reserva->id)
+                ? self::MENSAJE_RESERVA_DUPLICADA
+                : 'Este inmueble ya tiene una reserva en proceso.',
         ]);
+    }
+
+    // Reserva viva (en proceso o confirmada) del cliente sobre el inmueble, salvo `$salvo`
+    private function tieneReservaActiva(int $inmuebleId, int $clienteId, ?int $salvo = null): bool
+    {
+        return Reserva::query()
+            ->where('inmueble_id', $inmuebleId)
+            ->where('usuario_id', $clienteId)
+            ->whereIn('estado', EstadoReserva::activas())
+            ->when($salvo, fn ($q) => $q->where('id', '!=', $salvo))
+            ->exists();
     }
 
     /**
      * @throws ValidationException
      */
-    private function asegurarQueEsReservable(Inmueble $inmueble): void
+    private function asegurarQueEsReservable(Inmueble $inmueble, User $cliente): void
     {
         if ($inmueble->estado !== EstadoInmueble::Disponible) {
             throw ValidationException::withMessages([
-                'inmueble' => 'Este inmueble ya no está disponible.',
+                'inmueble' => 'Este inmueble ya no está disponible',
+            ]);
+        }
+
+        // HU-07.4: el mismo cliente no abre una segunda reserva sobre el mismo inmueble
+        if ($this->tieneReservaActiva($inmueble->id, $cliente->id)) {
+            throw ValidationException::withMessages([
+                'inmueble' => self::MENSAJE_RESERVA_DUPLICADA,
             ]);
         }
 

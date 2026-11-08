@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // antes hubo una sesión (cookie `sesion_iniciada`), manda «Su sesión ha expirado».
         $middleware->redirectGuestsTo(function (Request $peticion) {
             $mensajesPorRuta = [
-                // 'reservas.*' => 'Debe iniciar sesión para reservar un inmueble',
+                'reservas.store' => 'Debe iniciar sesión para reservar un inmueble',
             ];
 
             $mensaje = null;

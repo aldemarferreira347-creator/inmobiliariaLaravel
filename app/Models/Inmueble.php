@@ -9,6 +9,7 @@ use App\Enumerados\EstadoVenta;
 use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoInmueble;
 use App\Servicios\ImagenInmuebleService;
+use App\Servicios\NotificacionService;
 use Database\Factories\InmuebleFactory;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
@@ -87,6 +88,19 @@ class Inmueble extends Model
      */
     protected static function booted(): void
     {
+        // HU-09.4: todo cambio de estado pasa por el modelo, así que un único gancho cubre reservas, contratos y ventas
+        static::updated(function (Inmueble $inmueble) {
+            if (! $inmueble->wasChanged('estado')) {
+                return;
+            }
+
+            $anterior = $inmueble->getOriginal('estado');
+
+            if (EstadoInmueble::cambioRelevante($anterior, $inmueble->estado)) {
+                app(NotificacionService::class)->avisarCambioDeEstado($inmueble, $anterior);
+            }
+        });
+
         static::deleting(function (Inmueble $inmueble) {
             if ($inmueble->tieneHistorial()) {
                 throw new DomainException('No es posible eliminar un inmueble con historial de reservas o ventas');

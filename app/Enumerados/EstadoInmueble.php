@@ -30,6 +30,16 @@ enum EstadoInmueble: string
         return mb_strtolower($this->value);
     }
 
+    // HU-09.4: solo estos cambios se avisan al administrador por correo (los demás no saturan su bandeja)
+    public static function cambioRelevante(self $anterior, self $nuevo): bool
+    {
+        return in_array([$anterior, $nuevo], [
+            [self::Disponible, self::Reservado],
+            [self::Reservado, self::Ocupado],
+            [self::Ocupado, self::Disponible],
+        ], true);
+    }
+
     // Solo un inmueble disponible admite acciones comerciales en el catálogo
     public function esReservable(): bool
     {

@@ -2,9 +2,11 @@
 
 namespace App\Servicios;
 
+use App\Enumerados\EstadoInmueble;
 use App\Enumerados\RolUsuario;
 use App\Enumerados\TipoNotificacion;
 use App\Mail\Aviso;
+use App\Models\Inmueble;
 use App\Models\Notificacion;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -53,6 +55,23 @@ class NotificacionService
         }
 
         return $usuarios->count();
+    }
+
+    // HU-09.4: aviso (in-app y correo) a los administradores por un cambio relevante de estado
+    public function avisarCambioDeEstado(Inmueble $inmueble, EstadoInmueble $anterior): void
+    {
+        try {
+            $this->paraRol(
+                RolUsuario::Administrador,
+                'Cambio de estado de un inmueble',
+                "«{$inmueble->titulo}» ({$inmueble->codigo}) pasó de {$anterior->etiqueta()} a {$inmueble->estado->etiqueta()}.",
+                TipoNotificacion::Info,
+                conCorreo: true,
+            );
+        } catch (Throwable $e) {
+            // El cambio de estado ya se guardó: un fallo al avisar no lo revierte
+            report($e);
+        }
     }
 
     // Avisa al equipo interno: administradores y asesores activos
