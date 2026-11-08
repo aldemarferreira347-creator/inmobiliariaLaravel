@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('inmueble', function (Blueprint $table) {
-        $table->decimal('precio_venta', 15, 2)->nullable()->change();
-    });
+            $table->decimal('precio_venta', 15, 2)->nullable()->change();
+        });
     }
 
     /**

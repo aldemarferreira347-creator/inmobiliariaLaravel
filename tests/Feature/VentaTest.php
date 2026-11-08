@@ -10,8 +10,10 @@ use App\Models\Notificacion;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
+use App\Servicios\VentaService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class VentaTest extends TestCase
@@ -142,6 +144,44 @@ class VentaTest extends TestCase
 
         $this->assertSame(EstadoVenta::Cancelada, $venta->refresh()->estado);
         $this->assertSame(EstadoInmueble::Disponible, $venta->inmueble->refresh()->estado);
+    }
+
+    // Sin transacciones (MyISAM): otra petición reserva el inmueble entre la lectura y la venta
+    public function test_no_se_registra_la_venta_si_otro_reclama_el_inmueble_a_mitad_de_camino(): void
+    {
+        $inmueble = Inmueble::factory()->deVenta()->create();
+        $reclamado = false;
+        Inmueble::retrieved(function (Inmueble $leido) use ($inmueble, &$reclamado) {
+            if (! $reclamado && $leido->is($inmueble)) {
+                $reclamado = true;
+                Inmueble::whereKey($inmueble->id)->update(['estado' => EstadoInmueble::Reservado->value]);
+            }
+        });
+
+        $this->actingAs(User::factory()->asesor()->create())
+            ->post(route('asesor.ventas.store'), $this->datos($inmueble, User::factory()->create()))
+            ->assertSessionHasErrors('inmueble_id');
+
+        $this->assertSame(0, Venta::count());
+    }
+
+    // Una petición anterior ya cerró la venta: la cancelación con el modelo viejo no la revive ni libera el inmueble
+    public function test_no_se_cancela_una_venta_que_otra_peticion_ya_cerro(): void
+    {
+        $venta = Venta::factory()->create();
+        $venta->inmueble->update(['estado' => EstadoInmueble::Reservado]);
+        $obsoleta = Venta::find($venta->id);
+        Venta::whereKey($venta->id)->update(['estado' => EstadoVenta::Cerrada->value]);
+        Inmueble::whereKey($venta->inmueble_id)->update(['estado' => EstadoInmueble::Ocupado->value]);
+
+        $this->expectException(ValidationException::class);
+
+        try {
+            app(VentaService::class)->cancelar($obsoleta, 'Desistimiento.');
+        } finally {
+            $this->assertSame(EstadoVenta::Cerrada, $venta->refresh()->estado);
+            $this->assertSame(EstadoInmueble::Ocupado, $venta->inmueble->refresh()->estado);
+        }
     }
 
     public function test_un_asesor_no_toca_las_ventas_de_otro(): void

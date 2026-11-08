@@ -16,8 +16,11 @@ use App\Politicas\InmueblePolicy;
 use App\Politicas\ReservaPolicy;
 use App\Politicas\UserPolicy;
 use App\Politicas\VentaPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -53,5 +56,35 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Reserva::class, ReservaPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Venta::class, VentaPolicy::class);
+
+        $this->registrarLimitesDePeticiones();
+    }
+
+    /**
+     * Un límite con nombre por acción. El `throttle:N,1` sin nombre de Laravel
+     * comparte un único contador por usuario/IP entre todas las rutas, así que
+     * el sondeo de estado de la ficha gastaba el cupo de pagos y el login el de
+     * registro (un aula detrás de la misma IP recibía 429 al registrarse).
+     */
+    private function registrarLimitesDePeticiones(): void
+    {
+        $porMinuto = [
+            'login' => 20,
+            'registro' => 6,
+            'recuperacion' => 6,
+            'estado-inmueble' => 60,
+            'reservas' => 20,
+            'pagos' => 10,
+            'tarjetas' => 10,
+            'citas' => 20,
+            'franjas' => 60,
+            'mensajes' => 30,
+            'contactar' => 20,
+        ];
+
+        foreach ($porMinuto as $nombre => $limite) {
+            RateLimiter::for($nombre, fn (Request $peticion) => Limit::perMinute($limite)
+                ->by((string) ($peticion->user()?->getAuthIdentifier() ?? $peticion->ip())));
+        }
     }
 }

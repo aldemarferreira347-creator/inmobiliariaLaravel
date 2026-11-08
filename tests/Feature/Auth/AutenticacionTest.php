@@ -138,6 +138,17 @@ class AutenticacionTest extends TestCase
         $this->post(route('login'), ['email' => 'otro@example.com', 'password' => 'incorrecta'])->assertStatus(429);
     }
 
+    // Varias personas tras la misma IP (un aula): los intentos de login no gastan el cupo del registro
+    public function test_los_intentos_de_login_no_consumen_el_limite_del_registro(): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $this->post(route('login'), ['email' => "nadie{$i}@example.com", 'password' => 'incorrecta']);
+        }
+
+        $this->post(route('register'), [])->assertStatus(302);
+        $this->post(route('password.email'), ['email' => 'nadie@example.com'])->assertStatus(302);
+    }
+
     public function test_cambiar_la_contrasena_invalida_el_recuerdame(): void
     {
         $usuario = User::factory()->create(['remember_token' => 'token-viejo']);

@@ -20,6 +20,10 @@ use Illuminate\Validation\ValidationException;
  */
 class VentaService
 {
+    private const NO_VENDIBLE = 'Este inmueble no está disponible para iniciar una venta.';
+
+    private const NO_EN_PROCESO = 'Esta venta ya está cerrada o cancelada.';
+
     public function __construct(
         private readonly NotificacionService $notificaciones,
         private readonly ArchivoPrivadoService $archivos,
@@ -35,9 +39,23 @@ class VentaService
 
             $this->asegurarQueEsVendible($inmueble, (int) $datos['usuario_id']);
 
+            // Compare-and-swap: sin transacciones (MyISAM) el bloqueo no protege; el
+            // inmueble Disponible solo se reclama si nadie lo tomó desde que se leyó
+            if ($inmueble->estado === EstadoInmueble::Disponible) {
+                $reclamado = Inmueble::whereKey($inmueble->id)
+                    ->where('estado', EstadoInmueble::Disponible->value)
+                    ->update(['estado' => EstadoInmueble::Reservado->value]);
+
+                if ($reclamado === 0) {
+                    throw ValidationException::withMessages(['inmueble_id' => self::NO_VENDIBLE]);
+                }
+            }
+
             $venta = Venta::create([...$datos, 'asesor_id' => $asesor->id, 'estado' => EstadoVenta::EnProceso]);
 
-            // HU-14.1: una venta en curso bloquea el inmueble
+            $this->descartarSiHayOtraVentaActiva($venta);
+
+            // HU-14.1: una venta en curso bloquea el inmueble (vía el modelo para el aviso de HU-09.4)
             $inmueble->update(['estado' => EstadoInmueble::Reservado]);
 
             return $venta;
@@ -60,7 +78,7 @@ class VentaService
         $this->asegurarQueEstaEnProceso($venta);
 
         DB::transaction(function () use ($venta) {
-            $venta->update(['estado' => EstadoVenta::Cerrada]);
+            $this->transicionar($venta, EstadoVenta::Cerrada);
             $venta->inmueble->update(['estado' => EstadoInmueble::Ocupado]);
         });
 
@@ -80,7 +98,7 @@ class VentaService
         $this->asegurarQueEstaEnProceso($venta);
 
         DB::transaction(function () use ($venta) {
-            $venta->update(['estado' => EstadoVenta::Cancelada]);
+            $this->transicionar($venta, EstadoVenta::Cancelada);
 
             $inmueble = $venta->inmueble->fresh();
             $inmueble->update(['estado' => $inmueble->estadoCalculado()]);
@@ -108,14 +126,52 @@ class VentaService
     }
 
     /**
+     * Compare-and-swap de la venta: solo sale de «En proceso» si sigue así en la
+     * base. Si otra petición ya la cerró o canceló, se aborta sin tocar el inmueble.
+     *
+     * @throws ValidationException
+     */
+    private function transicionar(Venta $venta, EstadoVenta $nuevo): void
+    {
+        $cambiadas = Venta::whereKey($venta->id)
+            ->where('estado', EstadoVenta::EnProceso->value)
+            ->update(['estado' => $nuevo->value, 'updated_at' => now()]);
+
+        if ($cambiadas === 0) {
+            throw ValidationException::withMessages(['estado' => self::NO_EN_PROCESO]);
+        }
+
+        $venta->refresh();
+    }
+
+    /**
+     * Dos ventas simultáneas del mismo inmueble (p. ej. ambas sobre la reserva
+     * del comprador): se conserva la más antigua y se descarta la recién creada.
+     *
+     * @throws ValidationException
+     */
+    private function descartarSiHayOtraVentaActiva(Venta $venta): void
+    {
+        $hayOtra = Venta::where('inmueble_id', $venta->inmueble_id)
+            ->whereKeyNot($venta->id)
+            ->where('id', '<', $venta->id)
+            ->whereIn('estado', [EstadoVenta::EnProceso->value, EstadoVenta::Cerrada->value])
+            ->exists();
+
+        if ($hayOtra) {
+            $venta->delete();
+
+            throw ValidationException::withMessages(['inmueble_id' => self::NO_VENDIBLE]);
+        }
+    }
+
+    /**
      * @throws ValidationException
      */
     private function asegurarQueEsVendible(Inmueble $inmueble, int $compradorId): void
     {
         if ($inmueble->estado !== EstadoInmueble::Disponible && ! $this->loReservoElComprador($inmueble, $compradorId)) {
-            throw ValidationException::withMessages([
-                'inmueble_id' => 'Este inmueble no está disponible para iniciar una venta.',
-            ]);
+            throw ValidationException::withMessages(['inmueble_id' => self::NO_VENDIBLE]);
         }
     }
 
@@ -140,9 +196,7 @@ class VentaService
     private function asegurarQueEstaEnProceso(Venta $venta): void
     {
         if ($venta->estado !== EstadoVenta::EnProceso) {
-            throw ValidationException::withMessages([
-                'estado' => 'Esta venta ya está cerrada o cancelada.',
-            ]);
+            throw ValidationException::withMessages(['estado' => self::NO_EN_PROCESO]);
         }
     }
 }

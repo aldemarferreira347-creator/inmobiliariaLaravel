@@ -10,7 +10,7 @@ use Illuminate\View\View;
 /**
  * Inmuebles marcados como favoritos por el usuario autenticado (HU-18).
  *
- * Modelo principal: {@see \App\Models\Inmueble}, vinculado al usuario a
+ * Modelo principal: {@see Inmueble}, vinculado al usuario a
  * través de la tabla pivote `favorito` (relación belongsToMany).
  */
 class FavoritoController extends Controller

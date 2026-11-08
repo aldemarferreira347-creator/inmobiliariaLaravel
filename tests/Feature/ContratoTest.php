@@ -138,6 +138,24 @@ class ContratoTest extends TestCase
         $this->assertSame(EstadoInmueble::Disponible, $reserva->inmueble->refresh()->estado);
     }
 
+    // La reserva sigue Confirmada tras rescindir, pero ya no retiene el inmueble aunque
+    // pasen los 7 días de RN-18 y se recalcule su estado
+    public function test_un_contrato_rescindido_no_vuelve_a_retener_el_inmueble(): void
+    {
+        $reserva = $this->reservaConfirmada();
+        $admin = User::factory()->administrador()->create();
+
+        $this->actingAs($admin)->post(route('admin.contratos.store'), $this->datos($reserva));
+        $this->actingAs($admin)->post(route('admin.contratos.rescindir', Contrato::firstOrFail()), ['motivo' => 'Acuerdo.']);
+
+        $this->travel(8)->days();
+        $this->artisan('reservas:expirar')->assertSuccessful();
+
+        $inmueble = $reserva->inmueble->refresh();
+        $this->assertSame(EstadoInmueble::Disponible, $inmueble->estado);
+        $this->assertSame(EstadoInmueble::Disponible, $inmueble->estadoCalculado());
+    }
+
     public function test_el_comando_vence_los_contratos_caducados_y_libera_el_inmueble(): void
     {
         $reserva = $this->reservaConfirmada();

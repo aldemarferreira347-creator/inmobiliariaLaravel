@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImagenInmueble;
+use App\Models\Inmueble;
 use App\Servicios\ImagenInmuebleService;
 use Illuminate\Http\RedirectResponse;
 
@@ -11,7 +12,7 @@ use Illuminate\Http\RedirectResponse;
  * Portada y borrado de imágenes de la galería de un inmueble (HU-08).
  *
  * Modelo principal: {@see ImagenInmueble}, siempre ligada a un
- * {@see \App\Models\Inmueble}. Las operaciones de archivo se delegan en
+ * {@see Inmueble}. Las operaciones de archivo se delegan en
  * {@see ImagenInmuebleService}.
  */
 class ImagenInmuebleController extends Controller

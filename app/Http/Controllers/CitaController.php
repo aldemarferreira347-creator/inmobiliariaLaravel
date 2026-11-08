@@ -15,9 +15,9 @@ use Illuminate\View\View;
 /**
  * Citas de visita del cliente autenticado (HU-27).
  *
- * Modelo principal: {@see \App\Models\Cita}, agendada sobre un
- * {@see \App\Models\Inmueble} y validada contra los huecos definidos en
- * {@see \App\Models\ConfigFranjaCita}. La lógica de negocio vive en
+ * Modelo principal: {@see Cita}, agendada sobre un
+ * {@see Inmueble} y validada contra los huecos definidos en
+ * {@see ConfigFranjaCita}. La lógica de negocio vive en
  * {@see CitaService}, no en este controlador.
  */
 class CitaController extends Controller
