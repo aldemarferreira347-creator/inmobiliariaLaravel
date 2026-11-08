@@ -43,6 +43,11 @@ class ReportePagos extends Reporte
             ]);
     }
 
+    public function total(): int
+    {
+        return $this->consulta()->withoutEagerLoads()->count();
+    }
+
     public function resumen(): array
     {
         // Solo se cuentan y suman filas: no hace falta cargar inmuebles ni clientes

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\PeriodoReporte;
 use App\Enumerados\TipoReporte;
 use App\Models\Contrato;
 use App\Models\Inmueble;
@@ -11,8 +12,12 @@ use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
 use App\Servicios\Reportes\FabricaReportes;
+use App\Servicios\Reportes\FiltroReporte;
+use App\Servicios\Reportes\Reporte;
+use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ReporteTest extends TestCase
@@ -250,6 +255,140 @@ class ReporteTest extends TestCase
                 ->get(route("admin.reportes.$formato", ['pagos', 'desde' => now()->subMonths(11)->format('Y-m-d'), 'hasta' => $hasta]))
                 ->assertOk();
         }
+    }
+
+    public function test_hu_06_1_el_reporte_de_reservaciones_ofrece_generar_reporte_diario_de_una_fecha(): void
+    {
+        $hoy = Reserva::factory()->create();
+        $ayer = Reserva::factory()->create();
+        $ayer->forceFill(['created_at' => now()->subDay()])->save();
+        $admin = $this->administrador();
+
+        $this->actingAs($admin)
+            ->get(route('admin.reportes.show', TipoReporte::Reservaciones->value))
+            ->assertSee('Generar reporte diario')
+            ->assertSee('name="fecha"', false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.reportes.show', [TipoReporte::Reservaciones->value, 'fecha' => now()->format('Y-m-d')]))
+            ->assertOk()
+            ->assertSee($hoy->codigo_reserva)
+            ->assertDontSee($ayer->codigo_reserva);
+    }
+
+    /** Reporte sintético con N filas baratas, para probar los topes sin sembrar la base. */
+    private function reporteConFilas(int $filas, bool $soloTotal = false): Reporte
+    {
+        $filtro = new FiltroReporte(PeriodoReporte::porDefecto(), null, null, null);
+
+        return new class($filtro, $filas, $soloTotal) extends Reporte
+        {
+            public function __construct(FiltroReporte $filtro, private int $n, private bool $soloTotal)
+            {
+                parent::__construct($filtro);
+            }
+
+            public function tipo(): TipoReporte
+            {
+                return TipoReporte::Pagos;
+            }
+
+            public function columnas(): array
+            {
+                return ['A', 'B'];
+            }
+
+            public function filas(): Collection
+            {
+                return collect(range(1, $this->n))->map(fn ($i) => ["f{$i}", $i]);
+            }
+
+            public function total(): int
+            {
+                return $this->n;
+            }
+
+            public function resumen(): array
+            {
+                return [];
+            }
+        };
+    }
+
+    private function fabricaDevuelve(Reporte $reporte): void
+    {
+        $fabrica = \Mockery::mock(FabricaReportes::class);
+        $fabrica->shouldReceive('crear')->andReturn($reporte);
+        $this->app->instance(FabricaReportes::class, $fabrica);
+    }
+
+    public function test_el_pdf_con_mas_de_200_filas_se_rechaza(): void
+    {
+        $origen = route('admin.reportes.show', 'pagos');
+
+        $this->fabricaDevuelve($this->reporteConFilas(201));
+        $this->actingAs($this->administrador())->from($origen)
+            ->get(route('admin.reportes.pdf', 'pagos'))
+            ->assertRedirect($origen)
+            ->assertSessionHas('mensaje', 'El reporte tiene 201 filas y el PDF admite hasta 200. Acorte el rango o exporte a Excel.');
+    }
+
+    public function test_el_pdf_con_200_filas_se_genera(): void
+    {
+        $this->fabricaDevuelve($this->reporteConFilas(200));
+
+        $respuesta = $this->actingAs($this->administrador())->get(route('admin.reportes.pdf', 'pagos'))->assertOk();
+
+        $this->assertStringContainsString('application/pdf', $respuesta->headers->get('content-type'));
+    }
+
+    public function test_el_excel_con_mas_de_5000_filas_se_rechaza(): void
+    {
+        $origen = route('admin.reportes.show', 'pagos');
+
+        $this->fabricaDevuelve($this->reporteConFilas(5001));
+        $this->actingAs($this->administrador())->from($origen)
+            ->get(route('admin.reportes.excel', 'pagos'))
+            ->assertRedirect($origen)
+            ->assertSessionHas('mensaje', 'El reporte tiene 5001 filas y el Excel admite hasta 5.000. Acorte el rango.');
+    }
+
+    public function test_el_excel_con_5000_filas_se_genera(): void
+    {
+        $this->fabricaDevuelve($this->reporteConFilas(5000));
+
+        $this->actingAs($this->administrador())->get(route('admin.reportes.excel', 'pagos'))->assertOk();
+    }
+
+    public static function rutasConFabrica(): array
+    {
+        return ['excel' => ['admin.reportes.excel'], 'pdf' => ['admin.reportes.pdf']];
+    }
+
+    #[DataProvider('rutasConFabrica')]
+    public function test_hu_06_3_error_en_exportaciones_ofrece_intentar_nuevamente(string $ruta): void
+    {
+        $this->mock(FabricaReportes::class)
+            ->shouldReceive('crear')
+            ->andThrow(new \RuntimeException('Base de datos no disponible'));
+        $url = route($ruta, ['pagos', 'estado' => 'Pagado']);
+
+        $respuesta = $this->actingAs($this->administrador())->get($url)
+            ->assertOk()
+            ->assertSee('No se pudo generar el reporte')
+            ->assertSee('Intentar nuevamente');
+        $this->assertStringContainsString('href="'.e($url).'"', $respuesta->getContent());
+    }
+
+    public function test_hu_06_3_error_en_el_indice_ofrece_intentar_nuevamente(): void
+    {
+        $this->mock(FabricaReportes::class)
+            ->shouldReceive('crear')
+            ->andThrow(new \RuntimeException('Base de datos no disponible'));
+
+        $this->actingAs($this->administrador())->get(route('admin.reportes.index'))
+            ->assertOk()
+            ->assertSee('Intentar nuevamente');
     }
 
     public function test_un_tipo_de_reporte_inexistente_devuelve_404(): void

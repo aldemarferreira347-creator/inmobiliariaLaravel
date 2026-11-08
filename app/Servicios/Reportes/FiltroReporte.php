@@ -25,10 +25,16 @@ final class FiltroReporte
     {
         $datos = $peticion->validate([
             'periodo' => ['nullable', 'string'],
+            'fecha' => ['nullable', 'date'],
             'desde' => ['nullable', 'date'],
             'hasta' => ['nullable', 'date', 'after_or_equal:desde'],
             'estado' => ['nullable', 'string', 'max:50'],
         ]);
+
+        // HU-06.1: «fecha» pide el reporte diario, es decir desde = hasta = ese día
+        if (! empty($datos['fecha'])) {
+            $datos['desde'] = $datos['hasta'] = $datos['fecha'];
+        }
 
         return new self(
             periodo: PeriodoReporte::tryFrom($datos['periodo'] ?? '') ?? PeriodoReporte::porDefecto(),

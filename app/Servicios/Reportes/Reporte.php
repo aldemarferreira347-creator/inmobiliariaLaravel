@@ -27,6 +27,12 @@ abstract class Reporte
     /** @return array<string, string|int> cifras destacadas del reporte */
     abstract public function resumen(): array;
 
+    /** Número de filas del reporte, para acotar las exportaciones antes de construirlas */
+    public function total(): int
+    {
+        return $this->filas()->count();
+    }
+
     /** Índices de columna que contienen importes, para alinearlos y sumarlos */
     public function columnasNumericas(): array
     {

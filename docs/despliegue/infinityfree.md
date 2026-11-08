@@ -107,4 +107,10 @@ Medición con 2 000 filas de factory por tipo (SQLite, PHP 8.3, `memory_limit` 4
 | Contratos | 87,3 MB / 1,8 s | 1 029,3 MB / 32,3 s |
 | Ventas | 86,5 MB / 1,7 s | 910,6 MB / 29,6 s |
 
-El Excel cabe sobradamente; el PDF (Dompdf) supera con creces los 128 MB y los 20 s. Por eso la exportación (Excel y PDF) limita el rango: 31 días para el reporte diario (reservaciones) y 12 meses para el resto. Si se excede, se vuelve a la pantalla con el aviso «El rango a exportar no puede superar 31 días / 12 meses. Acorte las fechas e intente de nuevo.». La consulta en pantalla no tiene ese límite. Si la sonda muestra un `memory_limit` mayor, el límite puede relajarse en `ReporteController::rangoExcedido`.
+Del PDF salen ~0,45-0,58 MB y 15-18 ms por fila (910-1 167 MB y 29-36 s con 2 000 filas), de modo que con un `memory_limit` de 128 MB solo caben unas 200 filas. El Excel cuesta ~87 MB y menos de 2 s con 2 000 filas. Por eso la exportación tiene tres topes, todos con aviso en español al volver a la pantalla del reporte:
+
+- **PDF: 200 filas** (`ReporteController::MAX_FILAS_PDF`): «El reporte tiene N filas y el PDF admite hasta 200. Acorte el rango o exporte a Excel.»
+- **Excel: 5 000 filas** (`ReporteController::MAX_FILAS_EXCEL`): «El reporte tiene N filas y el Excel admite hasta 5.000. Acorte el rango.»
+- **Rango de fechas** como guarda adicional: 31 días para el reporte diario (reservaciones) y 12 meses para el resto.
+
+Las filas se cuentan con un `COUNT` antes de construir el archivo. La consulta en pantalla no tiene esos límites. Si la sonda muestra un `memory_limit` mayor, se ajustan las constantes.

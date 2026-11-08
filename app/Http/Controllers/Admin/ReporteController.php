@@ -23,6 +23,11 @@ use Throwable;
  */
 class ReporteController extends Controller
 {
+    /** Filas máximas por exportación: medido, ~0,5 MB y ~17 ms por fila en PDF; Excel 2 000 filas = 87 MB */
+    public const MAX_FILAS_PDF = 200;
+
+    public const MAX_FILAS_EXCEL = 5000;
+
     public function __construct(private readonly FabricaReportes $reportes) {}
 
     /** Panel de entrada con el resumen de cifras de cada tipo de reporte. */
@@ -78,25 +83,52 @@ class ReporteController extends Controller
     }
 
     /** Exporta el reporte filtrado a Excel. */
-    public function excel(Request $request, TipoReporte $tipo, ExportadorExcel $exportador): StreamedResponse|RedirectResponse
+    public function excel(Request $request, TipoReporte $tipo, ExportadorExcel $exportador): View|StreamedResponse|RedirectResponse
     {
-        $filtro = FiltroReporte::desdePeticion($request);
-
-        return $this->rangoExcedido($tipo, $filtro) ?? $exportador->exportar($this->reportes->crear($tipo, $filtro));
+        return $this->exportar($request, $tipo, self::MAX_FILAS_EXCEL, 'Excel', $exportador);
     }
 
     /** Exporta el reporte filtrado a PDF. */
-    public function pdf(Request $request, TipoReporte $tipo, ExportadorPdf $exportador): StreamedResponse|RedirectResponse
+    public function pdf(Request $request, TipoReporte $tipo, ExportadorPdf $exportador): View|StreamedResponse|RedirectResponse
     {
-        $filtro = FiltroReporte::desdePeticion($request);
-
-        return $this->rangoExcedido($tipo, $filtro) ?? $exportador->exportar($this->reportes->crear($tipo, $filtro));
+        return $this->exportar($request, $tipo, self::MAX_FILAS_PDF, 'PDF', $exportador);
     }
 
     /**
-     * Limita el rango exportable: con 2 000 filas el PDF llega a ~0,9–1,2 GB y
-     * tarda 30 s, más de lo que aguanta el hosting gratuito. El reporte diario
-     * admite 31 días y el resto 12 meses.
+     * Exporta con tres topes: rango de fechas, número de filas y fallo al construir.
+     * Los topes salen de la medición con 2 000 filas (docs/despliegue/infinityfree.md).
+     */
+    private function exportar(Request $request, TipoReporte $tipo, int $maxFilas, string $formato, ExportadorExcel|ExportadorPdf $exportador): View|StreamedResponse|RedirectResponse
+    {
+        $filtro = FiltroReporte::desdePeticion($request);
+
+        if ($rechazo = $this->rangoExcedido($tipo, $filtro)) {
+            return $rechazo;
+        }
+
+        try {
+            $reporte = $this->reportes->crear($tipo, $filtro);
+            $total = $reporte->total();
+
+            if ($total > $maxFilas) {
+                $alternativa = $formato === 'PDF' ? ' o exporte a Excel' : '';
+                $maximo = number_format($maxFilas, 0, ',', '.');
+
+                return back()->with([
+                    'mensaje' => "El reporte tiene {$total} filas y el {$formato} admite hasta {$maximo}. Acorte el rango{$alternativa}.",
+                    'tipo' => 'error',
+                ]);
+            }
+
+            return $exportador->exportar($reporte);
+        } catch (Throwable $e) {
+            return $this->errorDeGeneracion($e);
+        }
+    }
+
+    /**
+     * Limita el rango exportable (31 días el diario, 12 meses el resto) como
+     * segunda guarda además del tope de filas.
      */
     private function rangoExcedido(TipoReporte $tipo, FiltroReporte $filtro): ?RedirectResponse
     {

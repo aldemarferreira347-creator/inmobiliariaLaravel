@@ -31,6 +31,18 @@
         </div>
     </div>
 
+    @if ($tipo === \App\Enumerados\TipoReporte::Reservaciones)
+        {{-- HU-06.1: reporte de un solo día --}}
+        <form method="GET" class="reporte-filters">
+            <label>
+                Fecha
+                <input type="date" name="fecha" required
+                    value="{{ $filtro->desde && $filtro->hasta && $filtro->desde->isSameDay($filtro->hasta) ? $filtro->desde->format('Y-m-d') : now()->format('Y-m-d') }}">
+            </label>
+            <button type="submit" class="btn-filter-apply">Generar reporte diario</button>
+        </form>
+    @endif
+
     @include('admin.reportes.partials.filtros')
 
     <div class="stat-cards">
