@@ -16,7 +16,10 @@ use App\Models\Reserva;
 use App\Models\User;
 use App\Servicios\PagoService;
 use App\Servicios\StripeCardService;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Exceptions;
+use Mockery;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -82,14 +85,27 @@ class TareasPendientesTest extends TestCase
 
     public function test_fallo_de_tarea_no_rompe_la_pagina(): void
     {
-        // contratos:vencer lanza una excepción; las demás tareas deben seguir
-        Artisan::command('contratos:vencer', fn () => throw new RuntimeException('fallo simulado'));
+        Exceptions::fake();
+        // Sustituye el comando real por uno que lanza (registerCommand reemplaza por firma)
+        $this->app[Kernel::class]->registerCommand(new class extends Command
+        {
+            protected $signature = 'contratos:vencer';
+
+            public function handle(): int
+            {
+                throw new RuntimeException('falla simulada');
+            }
+        });
         $reserva = Reserva::factory()->vencida()->create();
         $pago = $this->pagoProcesandoDeHace(20);
-        $this->mock(StripeCardService::class, fn ($mock) => $mock->shouldReceive('sincronizarPago')->once()->with(\Mockery::on(fn ($p) => $p->is($pago)))->andReturn('processing'));
+        $this->mock(StripeCardService::class, function ($mock) use ($pago) {
+            $mock->shouldReceive('sincronizarPago')->once()->with(Mockery::on(fn ($p) => $p->is($pago)))->andReturn('processing');
+        });
 
         $this->get('/')->assertOk();
 
+        // La excepción se reportó (camino del catch) y las tareas posteriores corrieron
+        Exceptions::assertReported(fn (RuntimeException $e) => $e->getMessage() === 'falla simulada');
         $this->assertSame(EstadoReserva::Expirada, $reserva->fresh()->estado);
     }
 
@@ -116,6 +132,15 @@ class TareasPendientesTest extends TestCase
         $this->mock(StripeCardService::class, fn ($mock) => $mock->shouldNotReceive('sincronizarPago'));
 
         $this->get('/')->assertOk();
+    }
+
+    public function test_la_ruta_del_webhook_no_dispara_tareas(): void
+    {
+        $reserva = Reserva::factory()->vencida()->create();
+
+        $this->post('stripe/webhook');
+
+        $this->assertSame(EstadoReserva::PendientePago, $reserva->fresh()->estado);
     }
 
     public function test_con_tareas_desactivadas_no_se_ejecuta_nada(): void

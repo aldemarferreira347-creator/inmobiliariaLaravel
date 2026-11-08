@@ -29,7 +29,7 @@ class EjecutarTareasPendientes
 
     public function terminate(Request $peticion, Response $respuesta): void
     {
-        if (! config('app.tareas_por_peticion')) {
+        if (! config('app.tareas_por_peticion') || $peticion->is('stripe/webhook')) {
             return;
         }
 

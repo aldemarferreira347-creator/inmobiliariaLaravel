@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enumerados\EstadoPago;
+use App\Enumerados\MetodoPago;
 use App\Models\Pago;
 use App\Servicios\StripeCardService;
 use Illuminate\Console\Command;
@@ -22,6 +23,7 @@ class ConciliarPagos extends Command
     public function handle(StripeCardService $stripe): int
     {
         $pendientes = Pago::where('estado', EstadoPago::Procesando)
+            ->whereIn('metodo_pago', [MetodoPago::TarjetaCredito, MetodoPago::TarjetaDebito])
             ->whereNotNull('referencia_pasarela')
             ->where('created_at', '<', now()->subMinutes(10))
             ->get();
