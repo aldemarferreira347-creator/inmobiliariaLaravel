@@ -25,8 +25,7 @@ class ExpirarReservas extends Command
         // Cada reserva se procesa por separado: un fallo aislado no detiene al resto
         foreach ($vencidas as $reserva) {
             try {
-                $reservas->expirar($reserva);
-                $expiradas++;
+                $expiradas += $reservas->expirar($reserva) ? 1 : 0;
             } catch (Throwable $e) {
                 report($e);
                 $this->error("No se pudo expirar la reserva {$reserva->codigo_reserva}: {$e->getMessage()}");
@@ -40,8 +39,7 @@ class ExpirarReservas extends Command
 
         foreach ($sinContrato as $reserva) {
             try {
-                $reservas->expirarSinContrato($reserva);
-                $expiradas++;
+                $expiradas += $reservas->expirarSinContrato($reserva) ? 1 : 0;
             } catch (Throwable $e) {
                 report($e);
                 $this->error("No se pudo expirar la reserva {$reserva->codigo_reserva}: {$e->getMessage()}");

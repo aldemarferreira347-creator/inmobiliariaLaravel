@@ -11,8 +11,10 @@ use App\Models\HistorialReserva;
 use App\Models\Inmueble;
 use App\Models\Reserva;
 use App\Models\User;
+use App\Servicios\ContratoService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ContratoTest extends TestCase
@@ -182,5 +184,27 @@ class ContratoTest extends TestCase
         $this->actingAs($reserva->cliente)->get(route('contratos.descargar', $contrato))->assertOk();
         $this->actingAs($admin)->get(route('contratos.descargar', $contrato))->assertOk();
         $this->actingAs(User::factory()->create())->get(route('contratos.descargar', $contrato))->assertForbidden();
+    }
+
+    // RN-18: si la reserva expira entre que se carga y que se inserta, no se emite el contrato
+    public function test_no_se_emite_contrato_si_la_reserva_expira_a_mitad_de_camino(): void
+    {
+        $reserva = $this->reservaConfirmada();
+        $obsoleta = Reserva::findOrFail($reserva->id);
+
+        // Otra petición (reservas:expirar) la expira después de cargarla
+        Reserva::whereKey($reserva->id)->update(['estado' => EstadoReserva::Expirada->value]);
+
+        try {
+            app(ContratoService::class)->crearDesdeReserva($obsoleta, [
+                'fecha_inicio' => now()->format('Y-m-d'),
+                'fecha_fin' => now()->addYear()->format('Y-m-d'),
+            ]);
+            $this->fail('Debió rechazar el contrato.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('reserva_id', $e->errors());
+        }
+
+        $this->assertSame(0, Contrato::count());
     }
 }

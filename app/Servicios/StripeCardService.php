@@ -10,6 +10,7 @@ use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\ApiErrorException;
@@ -140,12 +141,7 @@ class StripeCardService
     {
         // El pago queda creado (y la reserva bloqueada para otros intentos)
         // antes de llamar a Stripe: un doble clic no puede cobrar dos veces.
-        $pago = $this->pagos->iniciar(
-            $reserva,
-            MetodoPago::TarjetaCredito,
-            $tarjeta->descripcion,
-            "Pago iniciado con tarjeta guardada ({$tarjeta->descripcion}).",
-        );
+        $pago = $this->pagoParaIntentar($reserva, $tarjeta);
 
         try {
             $intent = $this->stripe->paymentIntents->create([
@@ -176,6 +172,10 @@ class StripeCardService
             report($e);
             $this->pagos->rechazar($pago, null, 'No hubo comunicación con la pasarela de pago.');
 
+            // Stripe pudo confirmar el cobro antes de caerse la conexión: el reintento
+            // con esta misma tarjeta reutiliza el intento (misma clave de idempotencia)
+            Cache::put(self::claveDeReintento($reserva, $tarjeta), $pago->id, now()->addHours(23));
+
             return ['estado' => 'error_conexion'];
         } catch (Throwable $e) {
             // HU-23.5: cualquier otra falla
@@ -200,6 +200,31 @@ class StripeCardService
         $this->pagos->rechazar($pago, null, "El pago no pudo completarse (estado: {$intent->status}).");
 
         return ['estado' => 'error'];
+    }
+
+    // Reabre el intento que falló por conexión, si lo hay; si no, crea uno nuevo
+    private function pagoParaIntentar(Reserva $reserva, MetodoPagoGuardado $tarjeta): Pago
+    {
+        $previo = Cache::pull(self::claveDeReintento($reserva, $tarjeta));
+        $pago = $previo ? Pago::where('reserva_id', $reserva->id)->whereKey($previo)->first() : null;
+
+        if ($pago !== null && $pago->estado === EstadoPago::Rechazado && $pago->referencia_pasarela === null) {
+            return $this->pagos->reabrir($pago);
+        }
+
+        // El pago queda creado (y la reserva bloqueada para otros intentos)
+        // antes de llamar a Stripe: un doble clic no puede cobrar dos veces.
+        return $this->pagos->iniciar(
+            $reserva,
+            MetodoPago::TarjetaCredito,
+            $tarjeta->descripcion,
+            "Pago iniciado con tarjeta guardada ({$tarjeta->descripcion}).",
+        );
+    }
+
+    private static function claveDeReintento(Reserva $reserva, MetodoPagoGuardado $tarjeta): string
+    {
+        return "pago:reintento:{$reserva->id}:{$tarjeta->id}";
     }
 
     /**

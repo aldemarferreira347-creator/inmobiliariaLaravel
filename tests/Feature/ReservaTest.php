@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoReserva;
+use App\Enumerados\EstadoVenta;
 use App\Enumerados\ModalidadInmueble;
 use App\Mail\Aviso;
 use App\Models\Contrato;
@@ -12,6 +13,7 @@ use App\Models\Inmueble;
 use App\Models\Notificacion;
 use App\Models\Reserva;
 use App\Models\User;
+use App\Models\Venta;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -306,5 +308,24 @@ class ReservaTest extends TestCase
         $inmueble->update(['estado' => EstadoInmueble::Reservado]);
         $inmueble->update(['estado' => EstadoInmueble::Disponible]);
         Mail::assertQueuedCount(3);
+    }
+
+    // HU-09.2: una venta registrada (no cancelada) del mismo cliente e inmueble evita la expiración
+    public function test_hu_09_2_una_venta_registrada_evita_la_expiracion_y_una_cancelada_no(): void
+    {
+        $conVenta = $this->confirmadaHace(8);
+        Venta::factory()->create(['inmueble_id' => $conVenta->inmueble_id, 'usuario_id' => $conVenta->usuario_id]);
+
+        $conVentaCancelada = $this->confirmadaHace(8);
+        Venta::factory()->create([
+            'inmueble_id' => $conVentaCancelada->inmueble_id,
+            'usuario_id' => $conVentaCancelada->usuario_id,
+            'estado' => EstadoVenta::Cancelada,
+        ]);
+
+        $this->artisan('reservas:expirar')->assertSuccessful();
+
+        $this->assertSame(EstadoReserva::Confirmada, $conVenta->refresh()->estado);
+        $this->assertSame(EstadoReserva::Expirada, $conVentaCancelada->refresh()->estado);
     }
 }

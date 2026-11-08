@@ -102,11 +102,6 @@ class ContratoController extends Controller
             ->whereDoesntHave('contrato')
             ->recientes()
             ->get()
-            ->filter(function (Reserva $reserva) {
-                $confirmada = $reserva->confirmadaEn();
-
-                return $confirmada === null
-                    || now()->lessThanOrEqualTo($confirmada->copy()->addDays(Contrato::DIAS_PARA_EMITIR));
-            });
+            ->reject(fn (Reserva $reserva) => $reserva->plazoDeContratoVencido());
     }
 }

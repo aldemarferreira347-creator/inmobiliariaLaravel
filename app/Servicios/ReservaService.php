@@ -166,7 +166,7 @@ class ReservaService
     }
 
     // Expiración automática por vencimiento del plazo de pago (HU-09.2)
-    public function expirar(Reserva $reserva): void
+    public function expirar(Reserva $reserva): bool
     {
         $expirada = DB::transaction(function () use ($reserva) {
             // El cliente pudo registrar el pago justo mientras corría la tarea
@@ -187,7 +187,7 @@ class ReservaService
         });
 
         if (! $expirada) {
-            return;
+            return false;
         }
 
         $this->notificaciones->paraUsuario(
@@ -198,13 +198,15 @@ class ReservaService
             'reserva',
             $reserva->id,
         );
+
+        return true;
     }
 
     /**
      * RN-18 / HU-09.2: una reserva confirmada sin contrato ni venta pasados
      * 7 días naturales desde la confirmación expira y libera el inmueble.
      */
-    public function expirarSinContrato(Reserva $reserva): void
+    public function expirarSinContrato(Reserva $reserva): bool
     {
         $expirada = DB::transaction(function () use ($reserva) {
             $actual = $reserva->releerBloqueado();
@@ -228,7 +230,7 @@ class ReservaService
         });
 
         if (! $expirada) {
-            return;
+            return false;
         }
 
         $mensaje = "La reserva {$reserva->codigo_reserva} expiró porque no se formalizó en ".Contrato::DIAS_PARA_EMITIR.' días. El inmueble vuelve a estar disponible.';
@@ -244,6 +246,8 @@ class ReservaService
         );
 
         $this->notificaciones->paraRol(RolUsuario::Administrador, 'Reserva expirada', $mensaje, TipoNotificacion::Aviso);
+
+        return true;
     }
 
     // ----------------------------------------------------------------

@@ -34,6 +34,10 @@ class ContratoService
         $this->asegurarQueAdmiteContrato($reserva);
 
         $contrato = DB::transaction(function () use ($reserva, $datos) {
+            // Con la fila bloqueada se revalida: pudo expirar o formalizarse entre la carga y el insert
+            $reserva->releerBloqueado();
+            $this->asegurarQueAdmiteContrato($reserva);
+
             $contrato = Contrato::create([
                 'reserva_id' => $reserva->id,
                 'numero_contrato' => Contrato::generarNumero($reserva),
@@ -152,10 +156,7 @@ class ContratoService
             ]);
         }
 
-        $confirmada = $reserva->confirmadaEn();
-        $limite = $confirmada?->copy()->addDays(Contrato::DIAS_PARA_EMITIR);
-
-        if ($limite !== null && now()->greaterThan($limite)) {
+        if ($reserva->plazoDeContratoVencido()) {
             throw ValidationException::withMessages([
                 'reserva_id' => 'Venció el plazo de '.Contrato::DIAS_PARA_EMITIR
                     .' días naturales para emitir el contrato de esta reserva.',

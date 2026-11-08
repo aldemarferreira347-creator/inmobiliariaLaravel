@@ -12,7 +12,7 @@ use Stripe\HttpClient\ClientInterface;
  */
 class StripeSimulado implements ClientInterface
 {
-    /** @var array<int, array{metodo: string, url: string, params: array}> */
+    /** @var array<int, array{metodo: string, url: string, params: array, cabeceras: array}> */
     public array $peticiones = [];
 
     /** @param  Closure(string, string, array): array{0: string, 1: int, 2: array}  $respuesta */
@@ -33,7 +33,7 @@ class StripeSimulado implements ClientInterface
 
     public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null)
     {
-        $this->peticiones[] = ['metodo' => $method, 'url' => $absUrl, 'params' => $params];
+        $this->peticiones[] = ['metodo' => $method, 'url' => $absUrl, 'params' => $params, 'cabeceras' => $headers];
 
         return ($this->respuesta)($method, $absUrl, $params);
     }

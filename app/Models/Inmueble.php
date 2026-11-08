@@ -96,8 +96,9 @@ class Inmueble extends Model
 
             $anterior = $inmueble->getOriginal('estado');
 
+            // Tras el commit: un cambio revertido no envía correo y el SMTP no corre con bloqueos abiertos
             if (EstadoInmueble::cambioRelevante($anterior, $inmueble->estado)) {
-                app(NotificacionService::class)->avisarCambioDeEstado($inmueble, $anterior);
+                DB::afterCommit(fn () => app(NotificacionService::class)->avisarCambioDeEstado($inmueble, $anterior));
             }
         });
 

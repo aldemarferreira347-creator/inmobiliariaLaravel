@@ -544,4 +544,40 @@ class PagoTest extends TestCase
         $this->assertArrayNotHasKey('card', $stripe->peticiones[0]['params']);
         $this->assertSame(EstadoReserva::Confirmada, $reserva->refresh()->estado);
     }
+
+    // HU-23.3: si la conexión cae tras confirmarse el cobro, reintentar no cobra dos veces
+    public function test_hu_23_3_reintento_tras_error_de_conexion_reutiliza_la_clave_de_idempotencia(): void
+    {
+        Mail::fake();
+        Exceptions::fake();
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        $llamadas = 0;
+        $stripe = StripeSimulado::instalar(function () use (&$llamadas) {
+            // Stripe confirmó el cobro, pero la primera respuesta se perdió
+            if (++$llamadas === 1) {
+                throw new ApiConnectionException('Connection reset');
+            }
+
+            return StripeSimulado::ok(['id' => 'pi_test_idem', 'object' => 'payment_intent', 'status' => 'succeeded']);
+        });
+
+        try {
+            $this->pagarConTarjeta($reserva, $tarjeta)->assertSessionHas('reintentar_tarjeta', $tarjeta->id);
+            $this->assertSame(EstadoReserva::PendientePago, $reserva->refresh()->estado);
+
+            $this->pagarConTarjeta($reserva, $tarjeta)->assertSessionHas('tipo', 'success');
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $this->assertCount(2, $stripe->peticiones);
+        $claves = array_map(fn ($p) => collect($p['cabeceras'])->first(fn ($h) => str_starts_with($h, 'Idempotency-Key')), $stripe->peticiones);
+        $this->assertNotNull($claves[0]);
+        $this->assertSame($claves[0], $claves[1]);
+        $this->assertSame($stripe->peticiones[0]['params']['metadata'], $stripe->peticiones[1]['params']['metadata']);
+
+        $this->assertSame(1, Pago::count());
+        $this->assertSame(EstadoPago::Pagado, $reserva->pagos()->firstOrFail()->estado);
+        $this->assertSame(EstadoReserva::Confirmada, $reserva->refresh()->estado);
+    }
 }

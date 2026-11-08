@@ -92,6 +92,50 @@ class PagoService
     }
 
     /**
+     * Reabre un intento que acabó en error de conexión (HU-23.3): el cobro pudo
+     * haberse confirmado en Stripe, así que el reintento reutiliza el mismo
+     * Pago (y con él la misma clave de idempotencia) en lugar de crear otro.
+     *
+     * @throws ValidationException
+     */
+    public function reabrir(Pago $pago): Pago
+    {
+        return DB::transaction(function () use ($pago) {
+            $reserva = $pago->reserva->releerBloqueado();
+
+            if (! $reserva->admiteNuevoPago()) {
+                throw ValidationException::withMessages([
+                    'reserva' => 'Esta reserva no admite registrar un pago en este momento.',
+                ]);
+            }
+
+            $reabierto = Pago::whereKey($pago->id)
+                ->where('estado', EstadoPago::Rechazado->value)
+                ->whereNull('referencia_pasarela')
+                ->update(['estado' => EstadoPago::Procesando->value, 'motivo_rechazo' => null, 'revisado_en' => null]);
+
+            if ($reabierto === 0) {
+                throw ValidationException::withMessages(['pago' => 'Este intento de pago ya no se puede reintentar.']);
+            }
+
+            $pago->refresh();
+            $anterior = $reserva->estado;
+            $reserva->update(['estado' => EstadoReserva::ProcesandoPago]);
+
+            HistorialReserva::registrar(
+                $reserva,
+                $anterior->value,
+                EstadoReserva::ProcesandoPago->value,
+                'Reintento del pago tras un error de conexión con la pasarela.',
+                $reserva->usuario_id,
+                request()?->ip(),
+            );
+
+            return $pago;
+        });
+    }
+
+    /**
      * Anula un intento que nunca llegó a cobrarse (datos de tarjeta inválidos,
      * HU-23.4): el pago se borra y la reserva vuelve a «Pendiente de pago».
      */
