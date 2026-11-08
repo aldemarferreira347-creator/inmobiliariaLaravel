@@ -387,6 +387,7 @@ class PagoTest extends TestCase
     public function test_hu_23_3_error_de_conexion_ofrece_reintentar(): void
     {
         Exceptions::fake();
+        $admin = User::factory()->administrador()->create();
         [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
         StripeSimulado::instalar(fn () => throw new ApiConnectionException('cURL error 6: no se pudo resolver el host'));
 
@@ -401,6 +402,11 @@ class PagoTest extends TestCase
 
         $this->assertReservaSinConfirmar($reserva);
         Exceptions::assertReported(ApiConnectionException::class);
+
+        // Si el cliente no reintenta, el administrador queda avisado de verificar el cobro en Stripe
+        $aviso = Notificacion::where('usuario_id', $admin->id)->where('titulo', 'Pago con tarjeta sin confirmar')->firstOrFail();
+        $this->assertStringContainsString($reserva->codigo_reserva, $aviso->mensaje);
+        $this->assertStringContainsString('pago-'.$reserva->pagos()->firstOrFail()->id, $aviso->mensaje);
 
         // Al volver a la reserva aparece el botón y no se filtra el detalle técnico
         $this->followingRedirects()

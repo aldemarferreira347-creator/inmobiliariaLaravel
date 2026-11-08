@@ -72,6 +72,7 @@ Ningún flujo de pago exige el webhook entrante:
 
 - **Salida HTTPS a Stripe**: la fila `stripe_https` de la sonda debe mostrar cualquier código HTTP > 0 (401 o 404 son válidos: hubo respuesta de `api.stripe.com`). Con 0 no hay salida HTTPS: solo queda el pago manual (transferencia/efectivo) con revisión del administrador, y HU-20 y HU-23.1 se marcan «No soportado en InfinityFree gratuito» en la matriz de conformidad.
 - **Webhook**: en el panel de Stripe no se registra ningún endpoint para el dominio de InfinityFree; sería bloqueado por el desafío JavaScript `aes.js`. `STRIPE_WEBHOOK_SECRET` puede quedar vacío; la ruta `stripe/webhook` sigue existiendo pero no se usa.
+- **Cobro sin confirmar**: si la conexión con Stripe cae al pagar con tarjeta guardada, el pago queda rechazado en la aplicación, se avisa a los administradores («Pago con tarjeta sin confirmar», con código de reserva, id de pago y clave de idempotencia `pago-{id}`) para que verifiquen el cobro en el panel de Stripe, y el botón «Reintentar pago» reutiliza esa clave en las 23 h siguientes para no cobrar dos veces. El vínculo del reintento vive en la caché de Laravel: si se vacía, se pierde (mejor esfuerzo) y solo queda el aviso al administrador.
 - **Claves**: solo modo de pruebas (`pk_test_…` en `STRIPE_KEY`, `sk_test_…` en `STRIPE_SECRET`). Stripe.js (`js.stripe.com`) se carga sin Content-Security-Policy, así que no hay cabeceras que ajustar.
 
 ## Base de datos de producción (Tarea 9)

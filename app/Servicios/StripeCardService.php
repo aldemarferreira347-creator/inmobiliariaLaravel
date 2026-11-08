@@ -5,6 +5,8 @@ namespace App\Servicios;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\MetodoPago;
 use App\Enumerados\PasarelaPago;
+use App\Enumerados\RolUsuario;
+use App\Enumerados\TipoNotificacion;
 use App\Models\MetodoPagoGuardado;
 use App\Models\Pago;
 use App\Models\Reserva;
@@ -41,8 +43,10 @@ class StripeCardService
 
     private readonly StripeClient $stripe;
 
-    public function __construct(private readonly PagoService $pagos)
-    {
+    public function __construct(
+        private readonly PagoService $pagos,
+        private readonly NotificacionService $notificaciones,
+    ) {
         $this->stripe = new StripeClient(config('services.stripe.secret'));
     }
 
@@ -176,6 +180,14 @@ class StripeCardService
             // con esta misma tarjeta reutiliza el intento (misma clave de idempotencia)
             Cache::put(self::claveDeReintento($reserva, $tarjeta), $pago->id, now()->addHours(23));
 
+            // Si el cliente no reintenta, nadie más conciliaría un cobro que Stripe sí confirmó
+            $this->notificaciones->paraRol(
+                RolUsuario::Administrador,
+                'Pago con tarjeta sin confirmar',
+                "No hubo respuesta de Stripe al cobrar la reserva {$reserva->codigo_reserva} (pago #{$pago->id}, clave de idempotencia pago-{$pago->id}). Verifique en el panel de Stripe si el cobro se realizó.",
+                TipoNotificacion::Aviso,
+            );
+
             return ['estado' => 'error_conexion'];
         } catch (Throwable $e) {
             // HU-23.5: cualquier otra falla
@@ -205,11 +217,15 @@ class StripeCardService
     // Reabre el intento que falló por conexión, si lo hay; si no, crea uno nuevo
     private function pagoParaIntentar(Reserva $reserva, MetodoPagoGuardado $tarjeta): Pago
     {
-        $previo = Cache::pull(self::claveDeReintento($reserva, $tarjeta));
+        $clave = self::claveDeReintento($reserva, $tarjeta);
+        $previo = Cache::get($clave);
         $pago = $previo ? Pago::where('reserva_id', $reserva->id)->whereKey($previo)->first() : null;
 
         if ($pago !== null && $pago->estado === EstadoPago::Rechazado && $pago->referencia_pasarela === null) {
-            return $this->pagos->reabrir($pago);
+            $reabierto = $this->pagos->reabrir($pago);
+            Cache::forget($clave);
+
+            return $reabierto;
         }
 
         // El pago queda creado (y la reserva bloqueada para otros intentos)
