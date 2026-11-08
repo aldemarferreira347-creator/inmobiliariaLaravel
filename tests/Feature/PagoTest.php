@@ -6,8 +6,10 @@ use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
 use App\Enumerados\MetodoPago;
+use App\Mail\ComprobantePago;
 use App\Models\HistorialReserva;
 use App\Models\Inmueble;
+use App\Models\MetodoPagoGuardado;
 use App\Models\Notificacion;
 use App\Models\Pago;
 use App\Models\Reserva;
@@ -15,8 +17,11 @@ use App\Models\User;
 use App\Models\WebhookEvento;
 use App\Servicios\PagoService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\ClientInterface;
 use Tests\TestCase;
 
 class PagoTest extends TestCase
@@ -284,5 +289,48 @@ class PagoTest extends TestCase
         $this->assertNotSame(EstadoInmueble::Reservado, $pago->reserva->inmueble->refresh()->estado);
         $this->assertSame(0, HistorialReserva::where('reserva_id', $pago->reserva_id)
             ->where('estado_nuevo', EstadoReserva::Confirmada->value)->count());
+    }
+
+    // HU-23.1: el pago con tarjeta se confirma en la misma petición, sin esperar al webhook
+    // (InfinityFree bloquea los webhooks entrantes de Stripe).
+    public function test_hu_23_1_pago_exitoso_sin_webhook(): void
+    {
+        Mail::fake();
+
+        // Stripe simulado en la capa HTTP: el servicio real corre completo y no hay webhook.
+        ApiRequestor::setHttpClient(new class implements ClientInterface
+        {
+            public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null)
+            {
+                return [json_encode(['id' => 'pi_test_sinwebhook', 'object' => 'payment_intent', 'status' => 'succeeded']), 200, []];
+            }
+        });
+
+        try {
+            $reserva = Reserva::factory()->create(['inmueble_id' => Inmueble::factory()->deArriendo()->create()->id]);
+            $tarjeta = MetodoPagoGuardado::create([
+                'cliente_id' => $reserva->cliente->id,
+                'token_pasarela' => 'pm_test_1',
+                'cliente_pasarela_id' => 'cus_test_1',
+                'marca' => 'visa',
+                'ultimos_4' => '4242',
+            ]);
+
+            $this->actingAs($reserva->cliente)
+                ->post(route('reservas.pagar-con-tarjeta', [$reserva, $tarjeta]))
+                ->assertRedirect(route('reservas.show', $reserva))
+                ->assertSessionHas('tipo', 'success');
+        } finally {
+            ApiRequestor::setHttpClient(null);
+        }
+
+        $this->assertSame(EstadoReserva::Confirmada, $reserva->refresh()->estado);
+        $this->assertSame(EstadoInmueble::Reservado, $reserva->inmueble->refresh()->estado);
+        $this->assertSame(EstadoPago::Pagado, $reserva->pagos()->firstOrFail()->estado);
+        $this->assertSame(0, WebhookEvento::count());
+        Mail::assertQueued(
+            ComprobantePago::class,
+            fn (ComprobantePago $correo) => $correo->hasTo($reserva->cliente->email),
+        );
     }
 }

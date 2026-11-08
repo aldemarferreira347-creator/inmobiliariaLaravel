@@ -53,3 +53,18 @@ Proveedor SMTP según la sonda:
 - `smtp_587_brevo` abierto: Brevo, `MAIL_HOST=smtp-relay.brevo.com`, `MAIL_PORT=587`, cifrado TLS.
 - Si no, `smtp_587_gmail` abierto: Gmail con contraseña de aplicación, `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`.
 - Si ambos están cerrados: el sistema funciona igual y los correos quedan solo en el log (riesgo aceptado: el cliente no recibe comprobantes ni enlaces de recuperación de contraseña por correo).
+
+## Stripe sin webhook (Tarea 10)
+
+Ningún flujo de pago exige el webhook entrante:
+
+| Flujo | Cómo se completa sin webhook |
+|---|---|
+| Guardar tarjeta | Stripe.js confirma el SetupIntent desde el navegador y `MetodoPagoController::store` consulta a Stripe. |
+| Pagar con tarjeta guardada | `StripeCardService::pagarConTarjeta` crea el PaymentIntent con `confirm => true` en el servidor; si queda `succeeded`, aprueba el pago en la misma petición (`PagoTest::test_hu_23_1_pago_exitoso_sin_webhook`: reserva `Confirmada`, inmueble `Reservado`, comprobante enviado, cero eventos de webhook). |
+| Verificación 3D Secure | Tras `handleNextAction` en el navegador, `ReservaController::sincronizarPago` consulta el intento a Stripe y aplica el resultado. |
+| 3DS abandonado (pestaña cerrada) | `pagos:conciliar`, ejecutado por el planificador por petición (`EjecutarTareasPendientes`, cada 15 min como mínimo), consulta y concilia el pago (Tarea 5). |
+
+- **Salida HTTPS a Stripe**: la fila `stripe_https` de la sonda debe mostrar cualquier código HTTP > 0 (401 o 404 son válidos: hubo respuesta de `api.stripe.com`). Con 0 no hay salida HTTPS: solo queda el pago manual (transferencia/efectivo) con revisión del administrador, y HU-20 y HU-23.1 se marcan «No soportado en InfinityFree gratuito» en la matriz de conformidad.
+- **Webhook**: en el panel de Stripe no se registra ningún endpoint para el dominio de InfinityFree; sería bloqueado por el desafío JavaScript `aes.js`. `STRIPE_WEBHOOK_SECRET` puede quedar vacío; la ruta `stripe/webhook` sigue existiendo pero no se usa.
+- **Claves**: solo modo de pruebas (`pk_test_…` en `STRIPE_KEY`, `sk_test_…` en `STRIPE_SECRET`). Stripe.js (`js.stripe.com`) se carga sin Content-Security-Policy, así que no hay cabeceras que ajustar.
