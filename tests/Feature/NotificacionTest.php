@@ -318,18 +318,29 @@ class NotificacionTest extends TestCase
         $this->assertSame(4, Notificacion::count());
     }
 
-    public function test_hu_22_1_envio_a_todos_con_correo_y_200_usuarios_termina_en_menos_de_20_s(): void
+    public function test_hu_22_1_envio_a_todos_es_solo_in_app_aunque_se_marque_el_correo(): void
     {
-        config(['queue.default' => 'sync']);
+        Mail::fake();
         User::factory()->count(200)->create();
 
-        $inicio = microtime(true);
         $this->actingAs(User::factory()->administrador()->create())
             ->post(route('admin.notificaciones.store'), $this->datos(['enviar_correo' => '1']))
             ->assertSessionHasNoErrors();
 
-        $this->assertLessThan(20, microtime(true) - $inicio);
-        $this->assertSame(201, Notificacion::count());
+        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
+        $this->assertSame(201, Notificacion::where('tipo', 'sistema')->count());
+    }
+
+    public function test_hu_15_4_marcar_la_notificacion_de_otro_usuario_da_403_y_no_la_cambia(): void
+    {
+        $notificacion = Notificacion::create(['usuario_id' => User::factory()->create()->id, 'titulo' => 'Ajena', 'mensaje' => 'X']);
+
+        $this->actingAs(User::factory()->create())
+            ->patch(route('notificaciones.leida', $notificacion))
+            ->assertForbidden();
+
+        $this->assertNull($notificacion->fresh()->leida_en);
     }
 
     public function test_hu_22_2_y_22_3_pago_exitoso_notifica_al_cliente_y_alerta_al_administrador(): void

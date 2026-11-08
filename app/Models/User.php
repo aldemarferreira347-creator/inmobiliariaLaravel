@@ -25,6 +25,9 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    /** Conteo de notificaciones sin leer, memorizado durante la petición */
+    private ?int $sinLeerEnPeticion = null;
+
     protected $table = 'usuario';
 
     public const CREATED_AT = 'creado_en';
@@ -192,9 +195,10 @@ class User extends Authenticatable
         return $this->reservas()->exists() || $this->ventas()->exists();
     }
 
+    // Se calcula una vez por petición: el menú y la barra lateral lo piden ambos
     public function notificacionesSinLeer(): int
     {
-        return $this->notificaciones()->sinLeer()->count();
+        return $this->sinLeerEnPeticion ??= $this->notificaciones()->sinLeer()->count();
     }
 
     // ----------------------------------------------------------------

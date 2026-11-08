@@ -35,7 +35,7 @@ function iniciarSelectorDeDestino() {
 
     const sincronizar = () => {
         document.querySelectorAll('[data-destino]').forEach((campo) => {
-            campo.classList.toggle('hidden', campo.dataset.destino !== selector.value);
+            campo.classList.toggle('hidden', !campo.dataset.destino.split(' ').includes(selector.value));
         });
     };
 

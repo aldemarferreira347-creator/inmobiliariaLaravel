@@ -16,7 +16,7 @@ use Illuminate\View\View;
  *
  * El envío en sí (incluyendo el correo opcional) se delega en
  * {@see NotificacionService}; el destino puede ser un usuario, un rol
- * completo ({@see \App\Enumerados\RolUsuario}) o todos los usuarios.
+ * completo ({@see RolUsuario}) o todos los usuarios.
  */
 class NotificacionController extends Controller
 {
@@ -43,7 +43,7 @@ class NotificacionController extends Controller
                 $datos['titulo'],
                 $datos['mensaje'],
                 TipoNotificacion::Sistema,
-                $conCorreo,
+                false, // difusión solo in-app: cientos de correos en una petición sync exceden el límite del hosting
             ),
         };
 

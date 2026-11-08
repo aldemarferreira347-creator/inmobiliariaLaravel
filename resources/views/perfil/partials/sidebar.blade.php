@@ -64,7 +64,7 @@
         <a href="{{ route('notificaciones.index') }}" @class(['active' => request()->routeIs('notificaciones.*')])>
             <x-icon name="bell" class="h-4 w-4" /> Notificaciones
             @php($sinLeerNotif = auth()->user()->notificacionesSinLeer())
-                            <span @class(['nav-badge', 'hidden' => $sinLeerNotif === 0]) data-badge-notificaciones>{{ min($sinLeerNotif, 99) }}{{ $sinLeerNotif > 99 ? '+' : '' }}</span>
+            <span @class(['nav-badge', 'hidden' => $sinLeerNotif === 0]) data-badge-notificaciones>{{ min($sinLeerNotif, 99) }}{{ $sinLeerNotif > 99 ? '+' : '' }}</span>
         </a>
         <button type="button" data-modal-abrir="modal-password">
             <x-icon name="lock" class="h-4 w-4" /> Cambiar contraseña
