@@ -332,6 +332,25 @@ class NotificacionTest extends TestCase
         $this->assertSame(201, Notificacion::where('tipo', 'sistema')->count());
     }
 
+    public function test_hu_22_1_envio_a_un_rol_es_solo_in_app_aunque_se_marque_el_correo(): void
+    {
+        Mail::fake();
+        User::factory()->count(3)->create();
+        User::factory()->asesor()->create();
+
+        $this->actingAs(User::factory()->administrador()->create())
+            ->post(route('admin.notificaciones.store'), $this->datos([
+                'destino' => 'rol',
+                'rol' => RolUsuario::Cliente->value,
+                'enviar_correo' => '1',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
+        $this->assertSame(3, Notificacion::where('tipo', 'sistema')->count());
+    }
+
     public function test_hu_15_4_marcar_la_notificacion_de_otro_usuario_da_403_y_no_la_cambia(): void
     {
         $notificacion = Notificacion::create(['usuario_id' => User::factory()->create()->id, 'titulo' => 'Ajena', 'mensaje' => 'X']);

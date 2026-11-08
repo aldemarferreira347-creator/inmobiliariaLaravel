@@ -59,7 +59,7 @@ Proveedor SMTP según la sonda:
 - Si no, `smtp_587_gmail` abierto: Gmail con contraseña de aplicación, `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`.
 - Si ambos están cerrados: el sistema funciona igual y los correos quedan solo en el log (riesgo aceptado: el cliente no recibe comprobantes ni enlaces de recuperación de contraseña por correo).
 
-Envío masivo (HU-22.1): la notificación del administrador «a todos» es solo dentro del sistema, sin correo (el formulario oculta la casilla para ese destino y el servidor ignora `enviar_correo`). Con `QUEUE_CONNECTION=sync` y SMTP real, cientos de envíos en una sola petición superarían el límite de ejecución de InfinityFree. El envío individual y por rol conservan el correo opcional (`NotificacionTest::test_hu_22_1_envio_a_todos_es_solo_in_app_aunque_se_marque_el_correo`).
+Envío masivo (HU-22.1): toda difusión del administrador (a un rol o «a todos») es solo dentro del sistema, sin correo (el formulario muestra la casilla únicamente para un usuario y el servidor ignora `enviar_correo` en difusiones). Con `QUEUE_CONNECTION=sync` y SMTP real, cientos de envíos en una sola petición superarían el límite de ejecución de InfinityFree. Solo el envío individual conserva el correo opcional (`NotificacionTest::test_hu_22_1_envio_a_todos_es_solo_in_app_aunque_se_marque_el_correo`, `::test_hu_22_1_envio_a_un_rol_es_solo_in_app_aunque_se_marque_el_correo`).
 
 ## Stripe sin webhook (Tarea 10)
 

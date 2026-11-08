@@ -71,7 +71,7 @@
                     @enderror
                 </div>
 
-                <div class="form-group full" data-destino="usuario rol">
+                <div class="form-group full" data-destino="usuario">
                     <label class="modal-terminos">
                         <input type="checkbox" name="enviar_correo" value="1" @checked(old('enviar_correo'))>
                         <span>Enviar también por correo electrónico</span>

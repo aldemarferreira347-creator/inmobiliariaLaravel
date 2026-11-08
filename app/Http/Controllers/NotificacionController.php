@@ -37,6 +37,7 @@ class NotificacionController extends Controller
 
         if (! $notificacion->estaLeida()) {
             $notificacion->update(['leida_en' => now()]);
+            $request->user()->olvidarConteoNotificaciones();
         }
 
         return back();
@@ -46,6 +47,7 @@ class NotificacionController extends Controller
     public function marcarTodas(Request $request): RedirectResponse
     {
         $request->user()->notificaciones()->sinLeer()->update(['leida_en' => now()]);
+        $request->user()->olvidarConteoNotificaciones();
 
         return back()->with(['mensaje' => 'Todas tus notificaciones quedaron marcadas como leídas.', 'tipo' => 'success']);
     }

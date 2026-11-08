@@ -38,13 +38,9 @@ class NotificacionController extends Controller
 
         $alcance = match ($datos['destino']) {
             'usuario' => $this->aUnUsuario($datos, $conCorreo),
-            'rol' => $this->aUnRol($datos, $conCorreo),
-            'todos' => $this->notificaciones->paraTodos(
-                $datos['titulo'],
-                $datos['mensaje'],
-                TipoNotificacion::Sistema,
-                false, // difusión solo in-app: cientos de correos en una petición sync exceden el límite del hosting
-            ),
+            // Difusión (rol o todos) solo in-app: cientos de correos en una petición sync exceden el límite del hosting
+            'rol' => $this->aUnRol($datos),
+            'todos' => $this->notificaciones->paraTodos($datos['titulo'], $datos['mensaje'], TipoNotificacion::Sistema),
         };
 
         return redirect()
@@ -69,14 +65,13 @@ class NotificacionController extends Controller
     }
 
     /** Envía la notificación a todos los usuarios de un rol. Devuelve el número de destinatarios. */
-    private function aUnRol(array $datos, bool $conCorreo): int
+    private function aUnRol(array $datos): int
     {
         return $this->notificaciones->paraRol(
             RolUsuario::from($datos['rol']),
             $datos['titulo'],
             $datos['mensaje'],
             TipoNotificacion::Sistema,
-            $conCorreo,
         );
     }
 }

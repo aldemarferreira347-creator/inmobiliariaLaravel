@@ -195,6 +195,11 @@ class User extends Authenticatable
         return $this->reservas()->exists() || $this->ventas()->exists();
     }
 
+    public function olvidarConteoNotificaciones(): void
+    {
+        $this->sinLeerEnPeticion = null;
+    }
+
     // Se calcula una vez por petición: el menú y la barra lateral lo piden ambos
     public function notificacionesSinLeer(): int
     {

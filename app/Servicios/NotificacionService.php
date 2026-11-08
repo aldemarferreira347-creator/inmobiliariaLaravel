@@ -94,15 +94,10 @@ class NotificacionService
         string $titulo,
         string $mensaje,
         TipoNotificacion $tipo = TipoNotificacion::Sistema,
-        bool $conCorreo = false,
     ): int {
-        $usuarios = User::activos()->get();
+        $usuarios = User::activos()->get(['id']);
 
         $this->insertar($usuarios->modelKeys(), $titulo, $mensaje, $tipo);
-
-        if ($conCorreo) {
-            $this->enviarCorreo($usuarios, $titulo, $mensaje);
-        }
 
         return $usuarios->count();
     }
