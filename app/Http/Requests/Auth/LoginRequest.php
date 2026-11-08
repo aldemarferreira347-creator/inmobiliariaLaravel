@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -36,15 +37,22 @@ class LoginRequest extends FormRequest
     /**
      * Verifica las credenciales del formulario.
      *
-     * El mensaje de error es deliberadamente genérico para no revelar si el
-     * correo existe (OWASP A07). La cuenta desactivada sí se informa, porque
-     * ahí el usuario necesita saber a qué atenerse.
+     * Por exigencia de la HU-05.3 se informa cuando el correo no tiene cuenta
+     * (riesgo aceptado de enumeración, mitigado con el límite de intentos).
+     * Con correo existente y contraseña errónea el mensaje no dice cuál falló.
+     * La cuenta inactiva solo se informa con credenciales correctas.
      *
      * @throws ValidationException
      */
     public function authenticate(): void
     {
         $this->asegurarQueNoEstaBloqueado();
+
+        if (! User::where('email', $this->string('email')->toString())->exists()) {
+            RateLimiter::hit($this->claveDeBloqueo());
+
+            throw ValidationException::withMessages(['email' => trans('auth.sin_cuenta')]);
+        }
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->claveDeBloqueo());
@@ -56,7 +64,7 @@ class LoginRequest extends FormRequest
             Auth::logout();
 
             throw ValidationException::withMessages([
-                'email' => 'Tu cuenta está desactivada. Contacta al administrador.',
+                'email' => trans('auth.inactiva'),
             ]);
         }
 

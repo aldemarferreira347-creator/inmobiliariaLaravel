@@ -113,4 +113,64 @@ class PerfilTest extends TestCase
 
         $this->assertTrue(Hash::check('NuevaClave1*', $usuario->refresh()->contrasena));
     }
+
+    public function test_hu_25_1_editar_nombre_y_telefono_muestra_el_mensaje(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)
+            ->patch(route('perfil.update'), ['nombre' => 'Nuevo Nombre', 'telefono' => '3109876543'])
+            ->assertRedirect(route('perfil.edit'))
+            ->assertSessionHas('mensaje', 'Perfil actualizado exitosamente');
+
+        $this->assertSame('3109876543', $usuario->refresh()->telefono);
+    }
+
+    public function test_hu_25_2_contrasena_actual_incorrecta_y_correcta(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->put(route('password.update'), [
+            'contrasena_actual' => 'Incorrecta1*',
+            'contrasena' => 'NuevaClave1*',
+            'contrasena_confirmation' => 'NuevaClave1*',
+        ])->assertSessionHasErrors('contrasena_actual');
+
+        $this->put(route('password.update'), [
+            'contrasena_actual' => UserFactory::PASSWORD,
+            'contrasena' => 'NuevaClave1*',
+            'contrasena_confirmation' => 'NuevaClave1*',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('NuevaClave1*', $usuario->refresh()->contrasena));
+    }
+
+    public function test_hu_25_3_campos_invalidos_dan_un_error_por_campo(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->patch(route('perfil.update'), ['nombre' => '123', 'telefono' => 'abc'])
+            ->assertSessionHasErrors(['nombre', 'telefono']);
+    }
+
+    public function test_hu_25_4_foto_jpg_de_2_mb_se_guarda_y_png_grande_o_webp_se_rechazan(): void
+    {
+        Storage::fake('public');
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->post(route('perfil.foto.store'), [
+            'foto' => UploadedFile::fake()->image('avatar.jpg')->size(2048),
+        ])->assertSessionHasNoErrors();
+
+        $usuario->refresh();
+        $this->assertTrue($usuario->tieneFotoPropia());
+        $this->assertStringStartsWith('storage/avatares/', $usuario->foto_url);
+
+        $this->post(route('perfil.foto.store'), [
+            'foto' => UploadedFile::fake()->image('grande.png')->size(2150),
+        ])->assertSessionHasErrors('foto');
+
+        $this->post(route('perfil.foto.store'), [
+            'foto' => UploadedFile::fake()->image('foto.webp'),
+        ])->assertSessionHasErrors('foto');
+    }
 }

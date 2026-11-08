@@ -28,13 +28,14 @@ class PasswordResetLinkController extends Controller
     {
         $request->validate(['email' => ['required', 'email']]);
 
-        // Se ignora el resultado: responder distinto según exista o no el correo
-        // permitiría averiguar quién tiene cuenta (enumeración de usuarios).
-        Password::sendResetLink($request->only('email'));
+        $estado = Password::sendResetLink($request->only('email'));
 
-        return back()->with([
-            'mensaje' => 'Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.',
-            'tipo' => 'success',
-        ]);
+        // HU-24.2: se informa si el correo no tiene cuenta (riesgo aceptado de
+        // enumeración, documentado en docs/despliegue/infinityfree.md).
+        if ($estado !== Password::RESET_LINK_SENT) {
+            return back()->withInput($request->only('email'))->withErrors(['email' => __($estado)]);
+        }
+
+        return back()->with(['mensaje' => __($estado), 'tipo' => 'success']);
     }
 }

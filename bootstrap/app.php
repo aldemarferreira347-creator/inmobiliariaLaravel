@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Middleware\AgregarCabecerasSeguridad;
 use App\Http\Middleware\EjecutarTareasPendientes;
 use App\Http\Middleware\EnsureUserHasRole;
@@ -8,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,6 +22,36 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(
             fn (Request $peticion) => route($peticion->user()->rol->rutaInicio())
         );
+
+        // Invitado que llega a una ruta protegida: va al login. Los avisos por
+        // ruta se declaran en $mensajesPorRuta (patrón de ruta => aviso); si
+        // antes hubo una sesión (cookie `sesion_iniciada`), manda «Su sesión ha expirado».
+        $middleware->redirectGuestsTo(function (Request $peticion) {
+            $mensajesPorRuta = [
+                // 'reservas.*' => 'Debe iniciar sesión para reservar un inmueble',
+            ];
+
+            $mensaje = null;
+
+            if ($peticion->cookie(AuthenticatedSessionController::COOKIE_SESION)) {
+                $mensaje = 'Su sesión ha expirado';
+                Cookie::queue(Cookie::forget(AuthenticatedSessionController::COOKIE_SESION));
+            } else {
+                foreach ($mensajesPorRuta as $patron => $aviso) {
+                    if ($peticion->routeIs($patron)) {
+                        $mensaje = $aviso;
+                        break;
+                    }
+                }
+            }
+
+            if ($mensaje !== null && $peticion->hasSession()) {
+                $peticion->session()->flash('mensaje', $mensaje);
+                $peticion->session()->flash('tipo', 'warning');
+            }
+
+            return route('login');
+        });
 
         // Stripe llama a esta ruta directamente: se autentica por firma
         // (Stripe-Signature), no por sesión, así que no tiene token CSRF que validar.

@@ -44,6 +44,10 @@ La documentación (HU-03.4, HU-24.4, HU-25.2) exige bcrypt. `.env.example` y `de
 - El `.env` local también debe pasar a `HASH_DRIVER=bcrypt` (no se modifica automáticamente porque contiene credenciales reales).
 - Las contraseñas de los seeders se regeneran con bcrypt al ejecutar `migrate:fresh --seed` (Task 9); los hashes argon2id existentes dejan de ser válidos al cambiar el driver.
 
+## Riesgo aceptado: enumeración de cuentas
+
+Por exigencia de la documentación, HU-05.3 («No encontramos una cuenta con ese correo. ¿Deseas registrarte?») y HU-24.2 («No existe una cuenta asociada a este correo electrónico») revelan si un correo tiene cuenta, y el registro también avisa de correos repetidos (HU-03.2). La auditoría anterior lo había ocultado a propósito (OWASP A07). Se acepta el riesgo; la mitigación que se mantiene es el límite de intentos de inicio de sesión (5 por correo e IP) y de solicitudes de recuperación y registro.
+
 ## Correo (Tarea 6)
 
 Producción usa `QUEUE_CONNECTION=sync` y `MAIL_MAILER=failover` (`config/mail.php`: `['smtp', 'log']`). Los `Mailable` con `ShouldQueue` se envían en la misma petición; si SMTP falla o está bloqueado, el correo se escribe en `storage/logs/laravel.log` y la petición sigue (prueba: `NotificacionTest::test_smtp_caido_no_interrumpe_el_pago`).

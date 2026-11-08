@@ -8,6 +8,8 @@ use App\Reglas\PasswordSegura;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -58,8 +60,27 @@ class NewPasswordController extends Controller
             }
         );
 
-        return $estado === Password::PASSWORD_RESET
-            ? redirect()->route('login')->with(['mensaje' => __($estado), 'tipo' => 'success'])
-            : back()->withInput($request->only('email'))->withErrors(['email' => __($estado)]);
+        if ($estado === Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with(['mensaje' => __($estado), 'tipo' => 'success']);
+        }
+
+        // HU-24.3: el broker responde igual a un token inválido que a uno vencido
+        $mensaje = $estado === Password::INVALID_TOKEN && $this->tokenVencido($request)
+            ? __('passwords.expirado')
+            : __($estado);
+
+        return back()->withInput($request->only('email'))->withErrors(['email' => $mensaje]);
+    }
+
+    /** Indica si el token enviado corresponde al guardado para ese correo pero ya superó su vigencia. */
+    private function tokenVencido(Request $request): bool
+    {
+        $fila = DB::table(config('auth.passwords.users.table'))
+            ->where('email', $request->input('email'))
+            ->first();
+
+        return $fila !== null
+            && Hash::check((string) $request->input('token'), $fila->token)
+            && Carbon::parse($fila->created_at)->addMinutes((int) config('auth.passwords.users.expire'))->isPast();
     }
 }

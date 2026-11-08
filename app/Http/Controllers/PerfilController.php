@@ -62,7 +62,7 @@ class PerfilController extends Controller
     {
         $request->user()->update($request->validated());
 
-        return $this->volverAlPerfil('Perfil actualizado correctamente.');
+        return $this->volverAlPerfil('Perfil actualizado exitosamente');
     }
 
     /** Reemplaza la foto de perfil del usuario autenticado. */

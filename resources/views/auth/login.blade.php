@@ -6,6 +6,10 @@
     <h1>Bienvenido de nuevo</h1>
     <p class="auth-subtitle">Ingresa tus credenciales para acceder a tu cuenta.</p>
 
+    @if ($errors->first('email') === __('auth.sin_cuenta'))
+        <p class="auth-footer-link"><a href="{{ route('register') }}">Crear una cuenta</a></p>
+    @endif
+
     <form method="POST" action="{{ route('login') }}">
         @csrf
 

@@ -33,7 +33,7 @@ class RegistroRequest extends FormRequest
     {
         return [
             'nombre.regex' => 'El nombre solo puede contener letras, espacios y los signos . \' -',
-            'email.unique' => 'Este correo ya está registrado. Intenta iniciar sesión.',
+            'email.unique' => 'El correo ingresado ya está registrado. Por favor inicie sesión.',
             'documento_numero.unique' => 'Este número de documento ya está registrado en el sistema.',
             'telefono.regex' => 'El número de teléfono no tiene un formato válido.',
         ];

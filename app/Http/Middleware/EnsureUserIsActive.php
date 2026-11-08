@@ -26,7 +26,7 @@ class EnsureUserIsActive
             $request->session()->regenerateToken();
 
             return redirect()->route('login')->with([
-                'mensaje' => 'Tu cuenta está desactivada. Contacta al administrador.',
+                'mensaje' => 'Su cuenta está inactiva. Contacte al administrador',
                 'tipo' => 'error',
             ]);
         }

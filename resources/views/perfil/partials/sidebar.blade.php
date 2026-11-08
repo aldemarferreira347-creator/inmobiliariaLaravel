@@ -32,7 +32,7 @@
     <form id="form-foto" method="POST" action="{{ route('perfil.foto.store') }}" enctype="multipart/form-data"
         class="hidden">
         @csrf
-        <input type="file" id="foto-input" name="foto" accept="image/jpeg,image/png,image/webp">
+        <input type="file" id="foto-input" name="foto" accept="image/jpeg,image/png">
     </form>
 
     <nav class="perfil-menu">

@@ -51,6 +51,6 @@ class RegisteredUserController extends Controller
 
         return redirect()
             ->route('inicio')
-            ->with(['mensaje' => '¡Registro exitoso! Bienvenido a Inmobiliaria García.', 'tipo' => 'success']);
+            ->with(['mensaje' => 'Registro exitoso. Bienvenido', 'tipo' => 'success']);
     }
 }

@@ -6,6 +6,10 @@
     <h1>Define tu nueva contraseña</h1>
     <p class="auth-subtitle">Elige una contraseña segura que no hayas usado antes.</p>
 
+    @if ($errors->first('email') === __('passwords.expirado'))
+        <p class="auth-footer-link"><a href="{{ route('password.request') }}">Solicitar un enlace nuevo</a></p>
+    @endif
+
     <form method="POST" action="{{ route('password.store') }}">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">

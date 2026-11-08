@@ -3,8 +3,10 @@
 namespace Tests\Feature\Auth;
 
 use App\Enumerados\RolUsuario;
+use App\Mail\Aviso;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class RegistroTest extends TestCase
@@ -67,5 +69,43 @@ class RegistroTest extends TestCase
         User::factory()->create(['documento_numero' => '1075123456']);
 
         $this->post(route('register'), $this->datosValidos())->assertSessionHasErrors('documento_numero');
+    }
+
+    public function test_hu_03_1_registro_exitoso_muestra_el_mensaje(): void
+    {
+        $this->post(route('register'), $this->datosValidos(['telefono' => '3001234567']))
+            ->assertRedirect(route('inicio'))
+            ->assertSessionHas('mensaje', 'Registro exitoso. Bienvenido');
+
+        $this->assertDatabaseHas('usuario', ['email' => 'laura@ejemplo.test', 'telefono' => '3001234567']);
+    }
+
+    public function test_hu_03_2_correo_existente_pide_iniciar_sesion(): void
+    {
+        User::factory()->create(['email' => 'laura@ejemplo.test']);
+
+        $this->post(route('register'), $this->datosValidos())
+            ->assertSessionHasErrors(['email' => 'El correo ingresado ya está registrado. Por favor inicie sesión.']);
+    }
+
+    public function test_hu_03_3_contrasena_debil_muestra_el_mensaje_de_la_politica(): void
+    {
+        foreach (['abc', 'abcdefgh'] as $debil) {
+            $this->post(route('register'), $this->datosValidos([
+                'contrasena' => $debil,
+                'contrasena_confirmation' => $debil,
+            ]))->assertSessionHasErrors([
+                'contrasena' => 'La contraseña debe tener mínimo 8 caracteres e incluir números y letras',
+            ]);
+        }
+    }
+
+    public function test_hu_03_4_se_envia_correo_de_bienvenida_al_registrarse(): void
+    {
+        Mail::fake();
+
+        $this->post(route('register'), $this->datosValidos())->assertRedirect(route('inicio'));
+
+        Mail::assertQueued(Aviso::class, fn (Aviso $correo) => $correo->hasTo('laura@ejemplo.test'));
     }
 }
