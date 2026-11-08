@@ -181,12 +181,17 @@ class StripeCardService
             Cache::put(self::claveDeReintento($reserva, $tarjeta), $pago->id, now()->addHours(23));
 
             // Si el cliente no reintenta, nadie más conciliaría un cobro que Stripe sí confirmó
-            $this->notificaciones->paraRol(
-                RolUsuario::Administrador,
-                'Pago con tarjeta sin confirmar',
-                "No hubo respuesta de Stripe al cobrar la reserva {$reserva->codigo_reserva} (pago #{$pago->id}, clave de idempotencia pago-{$pago->id}). Verifique en el panel de Stripe si el cobro se realizó.",
-                TipoNotificacion::Aviso,
-            );
+            try {
+                $this->notificaciones->paraRol(
+                    RolUsuario::Administrador,
+                    'Pago con tarjeta sin confirmar',
+                    "No hubo respuesta de Stripe al cobrar la reserva {$reserva->codigo_reserva} (pago #{$pago->id}, clave de idempotencia pago-{$pago->id}). Verifique en el panel de Stripe si el cobro se realizó.",
+                    TipoNotificacion::Aviso,
+                );
+            } catch (Throwable $notificacion) {
+                // Avisar es de mejor esfuerzo: nunca debe impedir la respuesta «Reintentar pago»
+                report($notificacion);
+            }
 
             return ['estado' => 'error_conexion'];
         } catch (Throwable $e) {

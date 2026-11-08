@@ -15,6 +15,7 @@ use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\WebhookEvento;
+use App\Servicios\NotificacionService;
 use App\Servicios\PagoService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
@@ -585,5 +586,26 @@ class PagoTest extends TestCase
         $this->assertSame(1, Pago::count());
         $this->assertSame(EstadoPago::Pagado, $reserva->pagos()->firstOrFail()->estado);
         $this->assertSame(EstadoReserva::Confirmada, $reserva->refresh()->estado);
+    }
+
+    // HU-23.3: si falla el aviso a los administradores, el cliente sigue viendo «Reintentar pago»
+    public function test_hu_23_3_un_fallo_al_avisar_al_administrador_no_rompe_la_respuesta(): void
+    {
+        Exceptions::fake();
+        $this->partialMock(NotificacionService::class, fn ($mock) => $mock->shouldReceive('paraRol')->andThrow(new RuntimeException('fallo al notificar')));
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        StripeSimulado::instalar(fn () => throw new ApiConnectionException('Connection reset'));
+
+        try {
+            $this->pagarConTarjeta($reserva, $tarjeta)
+                ->assertRedirect(route('reservas.show', $reserva))
+                ->assertSessionHas('tipo', 'error')
+                ->assertSessionHas('reintentar_tarjeta', $tarjeta->id);
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        Exceptions::assertReported(fn (RuntimeException $e) => $e->getMessage() === 'fallo al notificar');
+        $this->assertSame(EstadoReserva::PendientePago, $reserva->refresh()->estado);
     }
 }
