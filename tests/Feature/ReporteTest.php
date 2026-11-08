@@ -10,6 +10,7 @@ use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
+use App\Servicios\Reportes\FabricaReportes;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
@@ -136,6 +137,118 @@ class ReporteTest extends TestCase
                 ->assertOk();
 
             $this->assertStringContainsString('application/pdf', $respuesta->headers->get('content-type'));
+        }
+    }
+
+    public function test_hu_06_1_reporte_diario_con_fecha_inmueble_cliente_y_estado(): void
+    {
+        $reserva = Reserva::factory()->confirmada()->create();
+        $hoy = now()->format('Y-m-d');
+
+        $this->actingAs($this->administrador())
+            ->get(route('admin.reportes.show', [TipoReporte::Reservaciones->value, 'desde' => $hoy, 'hasta' => $hoy]))
+            ->assertOk()
+            ->assertSeeInOrder(['Fecha', 'Inmueble', 'Cliente', 'Estado'])
+            ->assertSee($reserva->created_at->format('d/m/Y'))
+            ->assertSee($reserva->inmueble->titulo)
+            ->assertSee($reserva->cliente->nombre)
+            ->assertSee(EstadoReserva::Confirmada->etiqueta());
+    }
+
+    public function test_hu_06_3_error_al_construir_el_reporte_ofrece_intentar_nuevamente(): void
+    {
+        $this->mock(FabricaReportes::class)
+            ->shouldReceive('crear')
+            ->andThrow(new \RuntimeException('Base de datos no disponible'));
+
+        $url = route('admin.reportes.show', [TipoReporte::Reservaciones->value, 'estado' => 'Confirmada']);
+
+        $respuesta = $this->actingAs($this->administrador())
+            ->get($url)
+            ->assertOk()
+            ->assertSee('No se pudo generar el reporte')
+            ->assertSee('Intentar nuevamente');
+
+        $this->assertStringContainsString(
+            'href="'.e($url).'"',
+            $respuesta->getContent(),
+            'El botón repite la misma petición con los mismos filtros.'
+        );
+    }
+
+    public function test_hu_21_1_reporte_de_pagos_con_monto_metodo_pasarela_y_estado(): void
+    {
+        $pago = Pago::factory()->pagado()->create([
+            'metodo_pago' => 'tarjeta_credito',
+            'monto' => 1_500_000,
+            'referencia_pasarela' => 'pi_123',
+        ]);
+
+        $this->actingAs($this->administrador())
+            ->get(route('admin.reportes.show', TipoReporte::Pagos->value))
+            ->assertOk()
+            ->assertSeeInOrder(['Monto', 'Método', 'Pasarela', 'Estado'])
+            ->assertSee('1.500.000')
+            ->assertSee($pago->metodo_pago->etiqueta())
+            ->assertSee('Stripe')
+            ->assertSee($pago->estado->etiqueta());
+    }
+
+    public function test_hu_21_2_contratos_vigentes_con_numero_inmueble_cliente_valor_y_fin(): void
+    {
+        $vigente = Contrato::factory()->create();
+        $vencido = Contrato::factory()->create(['estado' => 'Vencido']);
+
+        $this->actingAs($this->administrador())
+            ->get(route('admin.reportes.show', [TipoReporte::Contratos->value, 'estado' => 'Vigente']))
+            ->assertOk()
+            ->assertSeeInOrder(['contrato', 'Inmueble', 'Cliente', 'Valor mensual', 'Fin'])
+            ->assertSee($vigente->numero_contrato)
+            ->assertSee($vigente->reserva->inmueble->titulo)
+            ->assertSee($vigente->reserva->cliente->nombre)
+            ->assertSee(number_format((float) $vigente->valor_mensual, 0, ',', '.'))
+            ->assertSee($vigente->fecha_fin->format('d/m/Y'))
+            ->assertDontSee($vencido->numero_contrato);
+    }
+
+    public function test_hu_21_3_ventas_por_rango_con_precio_total_y_asesor(): void
+    {
+        $venta = Venta::factory()->create(['fecha_venta' => now()->subDay()]);
+        $fuera = Venta::factory()->create();
+        $fuera->forceFill(['fecha_venta' => now()->subYear()])->save();
+
+        $this->actingAs($this->administrador())
+            ->get(route('admin.reportes.show', [
+                TipoReporte::Ventas->value,
+                'desde' => now()->subDays(7)->format('Y-m-d'),
+                'hasta' => now()->format('Y-m-d'),
+            ]))
+            ->assertOk()
+            ->assertSeeInOrder(['Asesor', 'Precio'])
+            ->assertSee(number_format((float) $venta->precio_venta, 0, ',', '.'))
+            ->assertSee($venta->asesor->nombre)
+            ->assertDontSee($fuera->inmueble->titulo);
+    }
+
+    public function test_la_exportacion_limita_el_rango_a_31_dias_en_el_diario_y_12_meses_en_el_resto(): void
+    {
+        $admin = $this->administrador();
+        $hasta = now()->format('Y-m-d');
+
+        foreach (['excel', 'pdf'] as $formato) {
+            $this->actingAs($admin)
+                ->from(route('admin.reportes.show', 'reservaciones'))
+                ->get(route("admin.reportes.$formato", ['reservaciones', 'desde' => now()->subDays(40)->format('Y-m-d'), 'hasta' => $hasta]))
+                ->assertRedirect(route('admin.reportes.show', 'reservaciones'))
+                ->assertSessionHas('mensaje', 'El rango a exportar no puede superar 31 días. Acorte las fechas e intente de nuevo.');
+
+            $this->actingAs($admin)
+                ->get(route("admin.reportes.$formato", ['pagos', 'desde' => now()->subMonths(13)->format('Y-m-d'), 'hasta' => $hasta]))
+                ->assertSessionHas('mensaje', 'El rango a exportar no puede superar 12 meses. Acorte las fechas e intente de nuevo.');
+
+            $this->actingAs($admin)
+                ->get(route("admin.reportes.$formato", ['pagos', 'desde' => now()->subMonths(11)->format('Y-m-d'), 'hasta' => $hasta]))
+                ->assertOk();
         }
     }
 

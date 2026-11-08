@@ -95,3 +95,16 @@ No volver a importar `bd.sql` completo: borraría los datos reales.
 ### Prueba de humo local del paquete
 
 Si se sirve `build-infinityfree/htdocs` en local (p. ej. con `php -S`), la aplicación crea sesiones, vistas compiladas y logs dentro de ese directorio y necesita un `.env` temporal. Después hay que volver a ejecutar `deploy/infinityfree/empaquetar.ps1` (o hacer la prueba sobre una copia) antes de subir por FTP, para que `htdocs` quede sin residuos ni `.env`.
+
+## Exportación de reportes (Tarea 19)
+
+Medición con 2 000 filas de factory por tipo (SQLite, PHP 8.3, `memory_limit` 4G, `memory_get_peak_usage()` de la petición de exportación, rango amplio sin límite):
+
+| Reporte | Excel (pico / tiempo) | PDF (pico / tiempo) |
+|---|---|---|
+| Reservaciones | 86,1 MB / 1,6 s | 910,4 MB / 29,4 s |
+| Pagos | 88,4 MB / 1,9 s | 1 167,3 MB / 36,2 s |
+| Contratos | 87,3 MB / 1,8 s | 1 029,3 MB / 32,3 s |
+| Ventas | 86,5 MB / 1,7 s | 910,6 MB / 29,6 s |
+
+El Excel cabe sobradamente; el PDF (Dompdf) supera con creces los 128 MB y los 20 s. Por eso la exportación (Excel y PDF) limita el rango: 31 días para el reporte diario (reservaciones) y 12 meses para el resto. Si se excede, se vuelve a la pantalla con el aviso «El rango a exportar no puede superar 31 días / 12 meses. Acorte las fechas e intente de nuevo.». La consulta en pantalla no tiene ese límite. Si la sonda muestra un `memory_limit` mayor, el límite puede relajarse en `ReporteController::rangoExcedido`.

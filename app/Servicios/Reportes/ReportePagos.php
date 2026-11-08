@@ -3,6 +3,7 @@
 namespace App\Servicios\Reportes;
 
 use App\Enumerados\EstadoPago;
+use App\Enumerados\PasarelaPago;
 use App\Enumerados\TipoReporte;
 use App\Models\Pago;
 use Illuminate\Support\Collection;
@@ -17,7 +18,7 @@ class ReportePagos extends Reporte
 
     public function columnas(): array
     {
-        return ['Reserva', 'Cliente', 'Monto', 'Método', 'Estado', 'Fecha', 'Motivo del rechazo'];
+        return ['Reserva', 'Cliente', 'Monto', 'Método', 'Pasarela', 'Estado', 'Fecha', 'Motivo del rechazo'];
     }
 
     public function columnasNumericas(): array
@@ -34,6 +35,8 @@ class ReportePagos extends Reporte
                 $pago->reserva->cliente->nombre,
                 (float) $pago->monto,
                 $pago->metodo_pago->etiqueta(),
+                // Los pagos con referencia de pasarela pasaron por Stripe; el resto son manuales
+                $pago->referencia_pasarela ? PasarelaPago::Stripe->etiqueta() : '—',
                 $pago->estado->etiqueta(),
                 $pago->created_at->format('d/m/Y H:i'),
                 $pago->motivo_rechazo ?: '—',
