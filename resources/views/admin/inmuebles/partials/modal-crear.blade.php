@@ -19,10 +19,10 @@
 
                 <div class="form-group">
                     <label for="imagenes">Agregar imágenes
-                        <span class="text-opcional">(JPG, PNG o WebP · hasta 10 imágenes · máx. 5 MB c/u)</span>
+                        <span class="text-opcional">(JPG o PNG · hasta 10 imágenes · máx. 5 MB c/u)</span>
                     </label>
                     <input type="file" id="imagenes" name="imagenes[]" class="input-file-custom" multiple
-                        accept="image/jpeg,image/png,image/webp">
+                        accept="image/jpeg,image/png">
                     <small class="field-note">La primera imagen se usará como portada.</small>
                 </div>
             </div>

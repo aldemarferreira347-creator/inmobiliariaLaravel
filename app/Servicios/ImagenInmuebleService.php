@@ -115,8 +115,18 @@ class ImagenInmuebleService
         return 'storage/'.$ruta;
     }
 
+    // Hosting sin GD (InfinityFree): la imagen se guarda tal cual, sin redimensionar
+    protected function gdDisponible(): bool
+    {
+        return extension_loaded('gd');
+    }
+
     private function redimensionarSiExcede(string $rutaAbsoluta): void
     {
+        if (! $this->gdDisponible()) {
+            return;
+        }
+
         [$ancho, $alto, $tipo] = getimagesize($rutaAbsoluta) ?: [0, 0, 0];
 
         if ($ancho <= self::ANCHO_MAXIMO) {

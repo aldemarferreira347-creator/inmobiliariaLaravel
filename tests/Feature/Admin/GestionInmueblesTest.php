@@ -16,6 +16,7 @@ use App\Models\ObservacionCita;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
+use App\Servicios\ImagenInmuebleService;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,141 @@ class GestionInmueblesTest extends TestCase
         $inmueble = Inmueble::firstOrFail();
 
         $this->assertStringStartsWith('INM-', $inmueble->codigo);
+    }
+
+    public function test_hu_04_1_el_alta_genera_codigo_unico_visible_en_el_listado_publico(): void
+    {
+        $this->actingAs($this->administrador());
+        $this->post(route('admin.inmuebles.store'), $this->datosValidos())->assertSessionHasNoErrors();
+        $this->post(route('admin.inmuebles.store'), $this->datosValidos(['titulo' => 'Casa en Rivera']))->assertSessionHasNoErrors();
+
+        $codigos = Inmueble::pluck('codigo');
+
+        $this->assertCount(2, $codigos->unique());
+        $this->assertTrue($codigos->every(fn ($c) => $c !== ''));
+        $this->get(route('inmuebles.index'))->assertSee($codigos->first());
+    }
+
+    public function test_hu_04_2_la_edicion_se_ve_en_el_listado_publico(): void
+    {
+        $inmueble = Inmueble::factory()->deVenta()->create(['titulo' => 'Titulo antiguo']);
+
+        $this->actingAs($this->administrador())
+            ->put(route('admin.inmuebles.update', $inmueble), $this->datosValidos(['titulo' => 'Titulo renovado']))
+            ->assertSessionHasNoErrors();
+
+        $this->get(route('inmuebles.index'))->assertSee('Titulo renovado')->assertDontSee('Titulo antiguo');
+    }
+
+    public function test_hu_04_3_eliminar_sin_reservas_activas_borra_la_fila(): void
+    {
+        $inmueble = Inmueble::factory()->deVenta()->create();
+
+        $this->actingAs($this->administrador())
+            ->delete(route('admin.inmuebles.destroy', $inmueble))
+            ->assertRedirect(route('admin.inmuebles.index'));
+
+        $this->assertDatabaseMissing('inmueble', ['id' => $inmueble->id]);
+    }
+
+    public function test_hu_04_4_envio_vacio_da_un_error_por_cada_campo_obligatorio(): void
+    {
+        $this->actingAs($this->administrador())
+            ->post(route('admin.inmuebles.store'), [])
+            ->assertSessionHasErrors([
+                'titulo', 'descripcion', 'tipo', 'modalidad', 'estado', 'ciudad',
+                'barrio', 'direccion', 'habitaciones', 'banos', 'area',
+            ]);
+
+        $this->assertSame(0, Inmueble::count());
+    }
+
+    public function test_hu_08_1_dos_jpg_crean_dos_filas_y_se_ven_en_la_ficha_publica(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->administrador())
+            ->post(route('admin.inmuebles.store'), $this->datosValidos([
+                'imagenes' => [
+                    UploadedFile::fake()->image('frente.jpg', 800, 600),
+                    UploadedFile::fake()->image('sala.jpg', 800, 600),
+                ],
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $inmueble = Inmueble::firstOrFail();
+        $this->assertSame(2, ImagenInmueble::where('inmueble_id', $inmueble->id)->count());
+
+        $respuesta = $this->get(route('inmuebles.show', $inmueble));
+        foreach ($inmueble->imagenes as $imagen) {
+            $respuesta->assertSee($imagen->url, false);
+        }
+    }
+
+    public function test_hu_08_2_un_pdf_se_rechaza_con_el_texto_de_la_hu(): void
+    {
+        $this->actingAs($this->administrador())
+            ->post(route('admin.inmuebles.store'), $this->datosValidos([
+                'imagenes' => [UploadedFile::fake()->create('plano.pdf', 100, 'application/pdf')],
+            ]))
+            ->assertSessionHasErrors(['imagenes.0' => 'Formato no permitido. Use JPG o PNG']);
+
+        $this->assertSame(0, Inmueble::count());
+    }
+
+    public function test_hu_08_2_webp_tambien_se_rechaza(): void
+    {
+        $this->actingAs($this->administrador())
+            ->post(route('admin.inmuebles.store'), $this->datosValidos([
+                'imagenes' => [UploadedFile::fake()->create('foto.webp', 100, 'image/webp')],
+            ]))
+            ->assertSessionHasErrors(['imagenes.0' => 'Formato no permitido. Use JPG o PNG']);
+    }
+
+    public function test_hu_08_3_un_jpg_de_5121_kb_se_rechaza_con_el_texto_de_la_hu(): void
+    {
+        $this->actingAs($this->administrador())
+            ->post(route('admin.inmuebles.store'), $this->datosValidos([
+                'imagenes' => [UploadedFile::fake()->image('grande.jpg', 800, 600)->size(5121)],
+            ]))
+            ->assertSessionHasErrors(['imagenes.0' => 'El archivo supera el tamaño máximo permitido (5 MB)']);
+    }
+
+    public function test_hu_08_4_descripcion_de_49_caracteres_se_rechaza(): void
+    {
+        $this->actingAs($this->administrador())
+            ->post(route('admin.inmuebles.store'), $this->datosValidos(['descripcion' => str_repeat('a', 49)]))
+            ->assertSessionHasErrors(['descripcion' => 'La descripción debe tener al menos 50 caracteres.']);
+    }
+
+    public function test_sin_gd_la_redimension_se_omite_y_la_imagen_se_guarda_intacta(): void
+    {
+        Storage::fake('public');
+        $inmueble = Inmueble::factory()->deVenta()->create();
+        $archivo = UploadedFile::fake()->image('ancha.jpg', 2000, 500);
+
+        $servicio = new class extends ImagenInmuebleService
+        {
+            protected function gdDisponible(): bool
+            {
+                return false;
+            }
+        };
+        $servicio->agregar($inmueble, [$archivo]);
+
+        $ruta = Storage::disk('public')->path(str_replace('storage/', '', $inmueble->imagenes()->first()->url));
+        $this->assertSame(2000, getimagesize($ruta)[0]);
+    }
+
+    public function test_con_gd_las_imagenes_anchas_se_reescalan(): void
+    {
+        Storage::fake('public');
+        $inmueble = Inmueble::factory()->deVenta()->create();
+
+        app(ImagenInmuebleService::class)->agregar($inmueble, [UploadedFile::fake()->image('ancha.jpg', 2000, 500)]);
+
+        $ruta = Storage::disk('public')->path(str_replace('storage/', '', $inmueble->imagenes()->first()->url));
+        $this->assertSame(1600, getimagesize($ruta)[0]);
     }
 
     public function test_se_rechaza_una_descripcion_demasiado_corta(): void

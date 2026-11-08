@@ -48,7 +48,7 @@ class InmuebleRequest extends FormRequest
             'area' => ['required', 'numeric', 'min:1'],
             'parqueadero' => ['required', 'boolean'],
             'imagenes' => ['nullable', 'array', 'max:'.self::MAXIMO_IMAGENES],
-            'imagenes.*' => ['image', 'mimes:jpeg,jpg,png,webp', 'max:'.self::MAXIMO_KB_IMAGEN],
+            'imagenes.*' => ['image', 'mimes:jpeg,jpg,png', 'max:'.self::MAXIMO_KB_IMAGEN],
         ];
     }
 
@@ -59,8 +59,9 @@ class InmuebleRequest extends FormRequest
             'precio_venta.required' => 'La modalidad elegida exige un precio de venta mayor a cero.',
             'precio_arrendamiento.required' => 'La modalidad elegida exige un precio de arriendo mayor a cero.',
             'imagenes.max' => 'Puedes subir un máximo de '.self::MAXIMO_IMAGENES.' imágenes a la vez.',
-            'imagenes.*.max' => 'Cada imagen puede pesar como máximo 5 MB.',
-            'imagenes.*.mimes' => 'Formato no admitido: usa JPG, PNG o WebP.',
+            'imagenes.*.max' => 'El archivo supera el tamaño máximo permitido (5 MB)',
+            'imagenes.*.mimes' => 'Formato no permitido. Use JPG o PNG',
+            'imagenes.*.image' => 'Formato no permitido. Use JPG o PNG',
         ];
     }
 

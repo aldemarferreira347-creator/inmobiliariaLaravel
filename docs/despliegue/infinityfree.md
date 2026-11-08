@@ -33,7 +33,8 @@
 ## Criterios de aceptación (requisitos mínimos)
 
 - Bloqueante: PHP < 8.3, o falta alguna de `pdo_mysql, mbstring, openssl, fileinfo, dom, xml, ctype, tokenizer`.
-- Si falta `gd`: la redimensión de `ImagenInmuebleService::redimensionarSiExcede` debe omitirse cuando `! extension_loaded('gd')` (Tarea 14).
+- Si falta `gd`: la redimensión de `ImagenInmuebleService::redimensionarSiExcede` debe omitirse cuando `! extension_loaded('gd')` (Tarea 14); la guarda está implementada incondicionalmente (`ImagenInmuebleService::gdDisponible`).
+- Límites de subida: cada imagen de inmueble admite hasta 5 MB (`max:5120`). El formulario permite hasta 10 imágenes por envío (`InmuebleRequest::MAXIMO_IMAGENES`). Si `post_max_size` de la sonda es menor que 5 MB × imágenes por envío (hasta 50 MB), el administrador debe subir menos imágenes por guardado (p. ej. `floor(post_max_size / 5 MB)`); no se cambia el límite del formulario hasta tener el dato de la sonda. `upload_max_filesize` debe ser ≥ 5 MB.
 - Si falta `zip` o `xmlwriter`: la exportación Excel se valida en la Tarea 19.
 - `motor_por_defecto` y `fk_soportadas` determinan la rama condicional de la Tarea 4; `smtp_587_*` y `stripe_https` la de la Tarea 6 (`stripe_https` con cualquier código HTTP distinto de 0, p. ej. 401 o 404, indica conectividad correcta; 0 = sin salida HTTPS).
 
