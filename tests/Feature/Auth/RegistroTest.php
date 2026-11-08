@@ -120,6 +120,16 @@ class RegistroTest extends TestCase
         }
     }
 
+    public function test_hu_03_3_la_pantalla_de_registro_muestra_la_politica_vigente(): void
+    {
+        $this->get(route('register'))
+            ->assertSee('Mínimo 8 caracteres')
+            ->assertSee('Al menos una letra')
+            ->assertSee('Al menos un número')
+            ->assertDontSee('mayúscula')
+            ->assertDontSee('carácter especial');
+    }
+
     public function test_hu_03_4_se_envia_correo_de_bienvenida_al_registrarse(): void
     {
         Mail::fake();

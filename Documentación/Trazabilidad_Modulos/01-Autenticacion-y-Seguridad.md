@@ -11,7 +11,7 @@
 | **Rutas** | `routes/auth.php` (incluido en `routes/web.php`) | Define endpoints públicos bajo `guest` y protegidos bajo `auth`. |
 | **Controladores** | `app/Http/Controllers/Auth/` | ├── `RegisteredUserController.php` (Alta pública de clientes).<br>├── `AuthenticatedSessionController.php` (Login, Logout y ruteo según rol).<br>├── `PasswordResetLinkController.php` (Envío de token de recuperación vía correo).<br>├── `NewPasswordController.php` (Reinicio de contraseña con token).<br>└── `PasswordController.php` (Cambio de contraseña para usuario autenticado). |
 | **Form Requests** | `app/Http/Requests/Auth/` y `app/Http/Requests/` | ├── `LoginRequest.php` (Rate Limiting por IP+Email, validación y autenticación).<br>├── `RegistroRequest.php` (Unicidad de email, formato y fortaleza de contraseña).<br>└── `CambiarPasswordRequest.php` (Verificación de `current_password`). |
-| **Reglas Custom** | `app/Reglas/PasswordSegura.php` | Regla reutilizable que exige: mínimo 8 caracteres, al menos una mayúscula, una minúscula, un número y un símbolo. |
+| **Reglas Custom** | `app/Reglas/PasswordSegura.php` | Regla reutilizable que exige: mínimo 8 caracteres con al menos una letra y un número (mensaje único de HU-03.3). |
 | **Middleware** | `app/Http/Middleware/` | ├── `EnsureUserIsActive.php` (Alias `activo`, aplicado globalmente a `web`).<br>└── `EnsureUserHasRole.php` (Alias `rol:admin,asesor` para control de rutas). |
 | **Modelos** | `app/Models/User.php`, `app/Models/Role.php` | Mapeo de tablas `usuario` y `rol` con casts a enums y métodos de soporte. |
 | **Enums** | `app/Enumerados/RolUsuario.php`<br>`app/Enumerados/EstadoUsuario.php` | `RolUsuario`: `administrador`, `asesor`, `cliente`.<br>`EstadoUsuario`: `activo`, `inactivo`. |
