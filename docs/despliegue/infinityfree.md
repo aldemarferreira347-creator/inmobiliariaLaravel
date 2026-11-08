@@ -36,3 +36,10 @@
 - Si falta `gd`: la redimensión de `ImagenInmuebleService::redimensionarSiExcede` debe omitirse cuando `! extension_loaded('gd')` (Tarea 14).
 - Si falta `zip` o `xmlwriter`: la exportación Excel se valida en la Tarea 19.
 - `motor_por_defecto` y `fk_soportadas` determinan la rama condicional de la Tarea 4; `smtp_587_*` y `stripe_https` la de la Tarea 6 (`stripe_https` con cualquier código HTTP distinto de 0, p. ej. 401 o 404, indica conectividad correcta; 0 = sin salida HTTPS).
+
+## Hash de contraseñas (bcrypt)
+
+La documentación (HU-03.4, HU-24.4, HU-25.2) exige bcrypt. `.env.example` y `deploy/infinityfree/env.produccion.example` ya fijan `HASH_DRIVER=bcrypt`.
+
+- El `.env` local también debe pasar a `HASH_DRIVER=bcrypt` (no se modifica automáticamente porque contiene credenciales reales).
+- Las contraseñas de los seeders se regeneran con bcrypt al ejecutar `migrate:fresh --seed` (Task 9); los hashes argon2id existentes dejan de ser válidos al cambiar el driver.

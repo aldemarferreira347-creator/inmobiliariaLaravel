@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Enumerados\RolUsuario;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class RegistroTest extends TestCase
@@ -33,6 +34,15 @@ class RegistroTest extends TestCase
 
         $this->assertSame(RolUsuario::Cliente, $usuario->rol);
         $this->assertAuthenticatedAs($usuario);
+    }
+
+    public function test_hu_03_4_contrasena_se_guarda_con_bcrypt(): void
+    {
+        $this->post(route('register'), $this->datosValidos())->assertRedirect(route('inicio'));
+
+        $usuario = User::where('email', 'laura@ejemplo.test')->firstOrFail();
+
+        $this->assertSame('bcrypt', Hash::info($usuario->contrasena)['algoName']);
     }
 
     public function test_se_rechaza_una_contrasena_debil(): void
