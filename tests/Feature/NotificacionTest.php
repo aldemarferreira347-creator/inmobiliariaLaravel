@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enumerados\EstadoReserva;
 use App\Enumerados\MetodoPago;
 use App\Enumerados\RolUsuario;
 use App\Mail\Aviso;
@@ -200,5 +201,36 @@ class NotificacionTest extends TestCase
             ComprobantePago::class,
             fn (ComprobantePago $correo) => $correo->hasTo($reserva->cliente->email),
         );
+    }
+
+    public function test_smtp_caido_no_interrumpe_el_pago(): void
+    {
+        config([
+            'queue.default' => 'sync',
+            'mail.default' => 'failover',
+            'mail.mailers.smtp.host' => '127.0.0.1',
+            'mail.mailers.smtp.port' => 1,
+            'mail.mailers.smtp.timeout' => 1,
+        ]);
+
+        $reserva = Reserva::factory()->create();
+
+        $this->actingAs($reserva->cliente)->post(route('reservas.pago', $reserva), [
+            'metodo_pago' => MetodoPago::Transferencia->value,
+        ]);
+
+        $pago = $reserva->refresh()->pagos()->firstOrFail();
+
+        $this->actingAs(User::factory()->administrador()->create())
+            ->post(route('admin.reservas.pagos.revisar', [$reserva, $pago]), ['decision' => 'aprobar'])
+            ->assertRedirect()
+            ->assertSessionHas('tipo', 'success');
+
+        $this->assertSame(EstadoReserva::Confirmada, $reserva->refresh()->estado);
+
+        // Los try/catch de los servicios podrían ocultar el fallo: el envío
+        // directo demuestra que es el transporte failover quien lo absorbe.
+        Mail::to($reserva->cliente->email)->send(new ComprobantePago($pago->fresh()));
+        $this->addToAssertionCount(1);
     }
 }

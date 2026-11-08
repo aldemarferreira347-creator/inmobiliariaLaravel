@@ -43,3 +43,13 @@ La documentación (HU-03.4, HU-24.4, HU-25.2) exige bcrypt. `.env.example` y `de
 
 - El `.env` local también debe pasar a `HASH_DRIVER=bcrypt` (no se modifica automáticamente porque contiene credenciales reales).
 - Las contraseñas de los seeders se regeneran con bcrypt al ejecutar `migrate:fresh --seed` (Task 9); los hashes argon2id existentes dejan de ser válidos al cambiar el driver.
+
+## Correo (Tarea 6)
+
+Producción usa `QUEUE_CONNECTION=sync` y `MAIL_MAILER=failover` (`config/mail.php`: `['smtp', 'log']`). Los `Mailable` con `ShouldQueue` se envían en la misma petición; si SMTP falla o está bloqueado, el correo se escribe en `storage/logs/laravel.log` y la petición sigue (prueba: `NotificacionTest::test_smtp_caido_no_interrumpe_el_pago`).
+
+Proveedor SMTP según la sonda:
+
+- `smtp_587_brevo` abierto: Brevo, `MAIL_HOST=smtp-relay.brevo.com`, `MAIL_PORT=587`, cifrado TLS.
+- Si no, `smtp_587_gmail` abierto: Gmail con contraseña de aplicación, `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`.
+- Si ambos están cerrados: el sistema funciona igual y los correos quedan solo en el log (riesgo aceptado: el cliente no recibe comprobantes ni enlaces de recuperación de contraseña por correo).
