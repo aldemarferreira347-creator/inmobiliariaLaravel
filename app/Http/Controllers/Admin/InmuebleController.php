@@ -78,17 +78,18 @@ class InmuebleController extends Controller
         return $this->volverAlListado("Inmueble «{$inmueble->titulo}» actualizado correctamente.");
     }
 
-    /** Elimina un inmueble junto con sus imágenes; se bloquea si tiene reservas activas asociadas. */
+    /** Elimina un inmueble junto con sus imágenes; se bloquea si tiene reservas (activas o históricas) o ventas. */
     // Un inmueble con reservas vivas conserva su histórico y no se elimina (HU-04.5)
     public function destroy(Inmueble $inmueble): RedirectResponse
     {
         $this->authorize('delete', $inmueble);
 
         if ($inmueble->tieneReservasActivas()) {
-            return $this->volverAlListado(
-                'No se puede eliminar: el inmueble tiene reservas activas asociadas.',
-                'error'
-            );
+            return $this->volverAlListado('No es posible eliminar un inmueble con reservas activas', 'error');
+        }
+
+        if ($inmueble->tieneHistorial()) {
+            return $this->volverAlListado('No es posible eliminar un inmueble con historial de reservas o ventas', 'error');
         }
 
         $titulo = $inmueble->titulo;

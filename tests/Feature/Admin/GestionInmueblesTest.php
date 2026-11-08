@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Enumerados\EstadoCita;
 use App\Enumerados\EstadoInmueble;
+use App\Enumerados\EstadoReserva;
 use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoInmueble;
 use App\Models\Cita;
@@ -14,6 +15,8 @@ use App\Models\Inmueble;
 use App\Models\ObservacionCita;
 use App\Models\Reserva;
 use App\Models\User;
+use App\Models\Venta;
+use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -214,8 +217,9 @@ class GestionInmueblesTest extends TestCase
         $conversacion = Conversacion::create(['cliente_id' => $clientes[0]->id, 'asesor_id' => $asesor->id, 'inmueble_id' => $inmueble->id]);
 
         // Simula MyISAM: sin claves foráneas no hay cascadas en la base de datos.
-        // SQLite ignora el PRAGMA dentro de una transacción, así que se cierra la
-        // que envuelve la prueba (la base en memoria es nueva en cada prueba).
+        // SQLite ignora el PRAGMA dentro de una transacción, por eso se cierra la que
+        // envuelve la prueba; es seguro porque RefreshDatabase vuelve a migrar la base
+        // en memoria al terminar.
         DB::commit();
         Schema::disableForeignKeyConstraints();
 
@@ -234,5 +238,61 @@ class GestionInmueblesTest extends TestCase
         foreach ($rutas as $ruta) {
             Storage::disk('public')->assertMissing($ruta);
         }
+    }
+
+    private function inmuebleConImagen(): array
+    {
+        Storage::fake('public');
+        $inmueble = Inmueble::factory()->deVenta()->create();
+        Storage::disk('public')->put('inmuebles/foto.jpg', 'contenido');
+        ImagenInmueble::create(['inmueble_id' => $inmueble->id, 'url' => 'storage/inmuebles/foto.jpg', 'es_principal' => true, 'orden' => 0]);
+
+        return [$inmueble, 'inmuebles/foto.jpg'];
+    }
+
+    public function test_hu_04_5_reserva_cancelada_impide_eliminar_y_conserva_las_fotos(): void
+    {
+        [$inmueble, $ruta] = $this->inmuebleConImagen();
+        Reserva::factory()->create(['inmueble_id' => $inmueble->id, 'estado' => EstadoReserva::Cancelada]);
+
+        $this->actingAs($this->administrador())
+            ->delete(route('admin.inmuebles.destroy', $inmueble))
+            ->assertRedirect(route('admin.inmuebles.index'))
+            ->assertSessionHas('mensaje', 'No es posible eliminar un inmueble con historial de reservas o ventas');
+
+        $this->assertDatabaseHas('inmueble', ['id' => $inmueble->id]);
+        Storage::disk('public')->assertExists($ruta);
+    }
+
+    public function test_hu_04_5_venta_impide_eliminar_y_conserva_las_fotos(): void
+    {
+        [$inmueble, $ruta] = $this->inmuebleConImagen();
+        Venta::factory()->create(['inmueble_id' => $inmueble->id]);
+
+        $this->actingAs($this->administrador())
+            ->delete(route('admin.inmuebles.destroy', $inmueble))
+            ->assertSessionHas('mensaje', 'No es posible eliminar un inmueble con historial de reservas o ventas');
+
+        $this->assertDatabaseHas('inmueble', ['id' => $inmueble->id]);
+        Storage::disk('public')->assertExists($ruta);
+    }
+
+    public function test_hu_04_5_reserva_activa_muestra_el_texto_de_la_hu(): void
+    {
+        [$inmueble] = $this->inmuebleConImagen();
+        Reserva::factory()->confirmada()->create(['inmueble_id' => $inmueble->id]);
+
+        $this->actingAs($this->administrador())
+            ->delete(route('admin.inmuebles.destroy', $inmueble))
+            ->assertSessionHas('mensaje', 'No es posible eliminar un inmueble con reservas activas');
+    }
+
+    public function test_el_modelo_se_niega_a_borrar_un_inmueble_con_historial(): void
+    {
+        $inmueble = Inmueble::factory()->create();
+        Venta::factory()->create(['inmueble_id' => $inmueble->id]);
+
+        $this->expectException(DomainException::class);
+        $inmueble->delete();
     }
 }

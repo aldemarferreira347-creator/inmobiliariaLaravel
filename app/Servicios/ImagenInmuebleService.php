@@ -88,12 +88,13 @@ class ImagenInmuebleService
         });
     }
 
-    // Retira del disco todas las imágenes antes de eliminar el inmueble
+    // Retira del disco las imágenes del inmueble una vez confirmada la transacción en curso,
+    // para que un rollback no deje las filas sin sus fotos
     public function eliminarTodas(Inmueble $inmueble): void
     {
         $rutas = $inmueble->imagenes()->pluck('url')->map($this->rutaEnDisco(...))->all();
 
-        Storage::disk('public')->delete($rutas);
+        DB::afterCommit(fn () => Storage::disk('public')->delete($rutas));
     }
 
     private function sincronizarPortada(Inmueble $inmueble, ?ImagenInmueble $imagen): void

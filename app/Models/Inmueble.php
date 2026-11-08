@@ -10,6 +10,7 @@ use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoInmueble;
 use App\Servicios\ImagenInmuebleService;
 use Database\Factories\InmuebleFactory;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -80,12 +81,17 @@ class Inmueble extends Model
      * El hosting puede usar MyISAM, que ignora las claves foráneas: ni
      * `cascadeOnDelete` ni `nullOnDelete` se ejecutarían y quedarían filas
      * huérfanas y archivos en disco. Se replica aquí lo que declaran las
-     * migraciones. Las reservas y ventas (`restrictOnDelete`) no se tocan: el
-     * controlador ya bloquea la eliminación si hay reservas activas.
+     * migraciones. Las reservas y ventas (`restrictOnDelete`) no se pueden
+     * borrar en cascada: si existen, la eliminación se rechaza aquí para que
+     * ningún llamador deje filas huérfanas.
      */
     protected static function booted(): void
     {
         static::deleting(function (Inmueble $inmueble) {
+            if ($inmueble->tieneHistorial()) {
+                throw new DomainException('No es posible eliminar un inmueble con historial de reservas o ventas');
+            }
+
             $citas = DB::table('cita')->where('inmueble_id', $inmueble->id)->pluck('id');
 
             DB::table('observacioncita')->whereIn('cita_id', $citas)->delete();
@@ -93,7 +99,7 @@ class Inmueble extends Model
             DB::table('cita')->where('inmueble_id', $inmueble->id)->delete();
             DB::table('favorito')->where('inmueble_id', $inmueble->id)->delete();
 
-            // Archivos primero (leen las filas), luego las filas de imageninmueble
+            // Los archivos se borran al confirmarse la transacción; luego las filas
             app(ImagenInmuebleService::class)->eliminarTodas($inmueble);
             DB::table('imageninmueble')->where('inmueble_id', $inmueble->id)->delete();
 
@@ -293,6 +299,12 @@ class Inmueble extends Model
             EstadoInmueble::Ocupado => 'No se puede marcar como Ocupado: el inmueble no tiene un contrato activo ni una reserva confirmada.',
             EstadoInmueble::Disponible => '',
         };
+    }
+
+    // Cualquier reserva (también cancelada o archivada) o venta impide eliminarlo: restrictOnDelete
+    public function tieneHistorial(): bool
+    {
+        return $this->reservas()->withTrashed()->exists() || $this->ventas()->exists();
     }
 
     // Un inmueble con reservas vivas no se elimina: se conserva el histórico (HU-04.5)

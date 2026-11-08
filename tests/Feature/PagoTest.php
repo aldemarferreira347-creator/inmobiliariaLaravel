@@ -257,4 +257,32 @@ class PagoTest extends TestCase
         $this->assertSame(EstadoReserva::Confirmada, $pago->reserva->refresh()->estado);
         $this->assertSame(0, Notificacion::where('titulo', 'Pago rechazado')->count());
     }
+
+    public function test_aprobar_no_confirma_una_reserva_cancelada_a_mitad_de_camino(): void
+    {
+        $pago = $this->reservaConPago();
+        $obsoleto = Pago::findOrFail($pago->id);
+        $cancelada = false;
+
+        // Otra petición cancela la reserva justo después de ganar este pago el CAS
+        Pago::retrieved(function (Pago $leido) use ($pago, &$cancelada) {
+            if ($cancelada || $leido->id !== $pago->id || $leido->estado !== EstadoPago::Pagado) {
+                return;
+            }
+            $cancelada = true;
+
+            DB::table('reserva')->where('id', $pago->reserva_id)->update(['estado' => EstadoReserva::Cancelada->value]);
+        });
+
+        try {
+            app(PagoService::class)->aprobar($obsoleto);
+            $this->fail('Debió fallar: la reserva ya no estaba esperando el pago.');
+        } catch (ValidationException) {
+        }
+
+        $this->assertSame(0, Notificacion::where('titulo', 'Reserva confirmada')->count());
+        $this->assertNotSame(EstadoInmueble::Reservado, $pago->reserva->inmueble->refresh()->estado);
+        $this->assertSame(0, HistorialReserva::where('reserva_id', $pago->reserva_id)
+            ->where('estado_nuevo', EstadoReserva::Confirmada->value)->count());
+    }
 }

@@ -103,6 +103,7 @@ class ReservaService
             $reserva,
             EstadoReserva::Confirmada,
             'Pago aprobado: la reserva queda confirmada.',
+            [EstadoReserva::ProcesandoPago],
             $autor,
         );
 
@@ -142,6 +143,7 @@ class ReservaService
                 $reserva,
                 EstadoReserva::Cancelada,
                 $motivo ?: 'Reserva cancelada.',
+                array_values(array_filter(EstadoReserva::cases(), fn (EstadoReserva $e) => ! $e->esFinal())),
                 $autor,
             );
 
@@ -172,6 +174,7 @@ class ReservaService
                 $reserva,
                 EstadoReserva::Expirada,
                 'Expirada automáticamente: venció el plazo de pago.',
+                [EstadoReserva::PendientePago],
             );
 
             $this->liberarInmueble($reserva);
@@ -200,17 +203,20 @@ class ReservaService
     /**
      * Aplica un cambio de estado y lo deja registrado en el historial.
      * Un `autor` nulo identifica los cambios originados por el sistema.
+     *
+     * @param  array<int, EstadoReserva>  $esperados  estados de origen legítimos de la transición
      */
-    private function transicionar(Reserva $reserva, EstadoReserva $nuevo, string $comentario, ?User $autor = null): void
+    private function transicionar(Reserva $reserva, EstadoReserva $nuevo, string $comentario, array $esperados, ?User $autor = null): void
     {
-        DB::transaction(function () use ($reserva, $nuevo, $comentario, $autor) {
+        DB::transaction(function () use ($reserva, $nuevo, $comentario, $esperados, $autor) {
             $anterior = $reserva->estado;
 
             // Compare-and-swap: sin transacciones (MyISAM) solo cambia si el
-            // estado en la base sigue siendo el que esta petición leyó; si otra
-            // petición se adelantó, no se duplica ni el cambio ni el historial.
+            // estado en la base es uno de los orígenes legítimos de la transición
+            // (no el recién releído, que podría ser ya el de otra petición);
+            // si otra se adelantó, no se duplica ni el cambio ni el historial.
             $cambiadas = Reserva::whereKey($reserva->id)
-                ->where('estado', $anterior->value)
+                ->whereIn('estado', array_map(fn (EstadoReserva $e) => $e->value, $esperados))
                 ->update(['estado' => $nuevo->value]);
 
             if ($cambiadas === 0) {
