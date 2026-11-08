@@ -90,7 +90,7 @@ class CitaService
             ]);
         }
 
-        $accion = $cita->estado === EstadoCita::Asignada ? 'REASIGNADA' : 'ASIGNADA';
+        $accion = $cita->asesor_id !== null ? 'REASIGNADA' : 'ASIGNADA';
 
         DB::transaction(function () use ($cita, $asesor, $admin, $accion) {
             $cita->update(['asesor_id' => $asesor->id, 'estado' => EstadoCita::Asignada]);
@@ -118,7 +118,19 @@ class CitaService
         }
 
         DB::transaction(function () use ($cita, $asesor) {
-            $cita->update(['estado' => EstadoCita::Confirmada]);
+            // CAS: solo confirma si la cita sigue Asignada a este asesor
+            $filas = Cita::whereKey($cita->id)
+                ->where('estado', EstadoCita::Asignada->value)
+                ->where('asesor_id', $asesor->id)
+                ->update(['estado' => EstadoCita::Confirmada->value]);
+
+            if ($filas === 0) {
+                throw ValidationException::withMessages([
+                    'estado' => 'La cita cambió mientras la confirmabas; recarga la página.',
+                ]);
+            }
+
+            $cita->refresh();
             CitaHistorial::registrar($cita, $asesor, 'CONFIRMADA', "Visita confirmada por el asesor {$asesor->nombre}.");
         });
 

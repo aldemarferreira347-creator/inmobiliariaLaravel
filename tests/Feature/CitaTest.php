@@ -232,6 +232,20 @@ class CitaTest extends TestCase
         $this->assertTrue(CitaHistorial::where('cita_id', $cita->id)->where('accion', 'REASIGNADA')->exists());
     }
 
+    public function test_hu_10_3_reasignar_una_cita_confirmada_registra_reasignada(): void
+    {
+        $cita = $this->citaAsignada();
+        $cita->update(['estado' => EstadoCita::Confirmada]);
+        $nuevo = User::factory()->asesor()->create();
+
+        $this->actingAs(User::factory()->administrador()->create())
+            ->post(route('admin.citas.asignar', $cita), ['asesor_id' => $nuevo->id]);
+
+        $this->assertTrue(CitaHistorial::where('cita_id', $cita->id)->where('accion', 'REASIGNADA')->exists());
+        $this->assertTrue(Notificacion::where('usuario_id', $nuevo->id)->where('titulo', 'Cita asignada')->exists());
+        $this->assertSame(EstadoCita::Asignada, $cita->refresh()->estado);
+    }
+
     // ---------------------------------------------------------------
     // HU-11: citas del asesor
     // ---------------------------------------------------------------
