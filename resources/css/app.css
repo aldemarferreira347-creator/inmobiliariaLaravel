@@ -457,7 +457,7 @@ header nav {
 .badge-estado {
   @apply mr-1.5 inline-block rounded-full px-2.5 py-1 text-xs font-semibold uppercase;
 }
-.badge-estado.disponible { @apply bg-(--color-navy-500)/15 text-(--color-acento-700); }
+.badge-estado.disponible { @apply bg-emerald-500/15 text-emerald-700 dark:text-emerald-300; }
 .badge-estado.reservado { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
 .badge-estado.ocupado { @apply bg-(--color-fill-strong) text-(--color-ink)/60; }
 .badge-modalidad {
@@ -1046,6 +1046,7 @@ footer {
 
 /* ── Botón «Reservar» en la ficha del inmueble ── */
 .btn-reservar-inmueble { @apply inline-flex w-full items-center justify-center gap-2 rounded-xl bg-(--color-gold-500) px-5 py-3.5 text-sm font-bold text-(--color-navy-900) transition hover:bg-(--color-gold-400); }
+.btn-reservar-inmueble:disabled { @apply cursor-not-allowed opacity-50 hover:bg-(--color-gold-500); }
 .btn-reservar--login { @apply bg-(--color-navy-700) text-white hover:bg-(--color-navy-800); }
 
 /* ── Reportes (admin) ── */

@@ -10,7 +10,7 @@
 @endphp
 
 @section('contenido')
-    <div class="detalle-page">
+    <div class="detalle-page" data-url-estado="{{ route('inmuebles.estado', $inmueble) }}" data-estado="{{ $inmueble->estado->value }}">
         <x-flash class="alerta-detalle" />
 
         <div class="detalle-back-bar">
@@ -140,7 +140,7 @@
                             @auth
                                 @can('create', \App\Models\Reserva::class)
                                     <button type="button" class="btn-reservar-inmueble" data-modal-abrir="modal-reserva">
-                                        <x-icon name="lock" class="h-5 w-5" /> Reservar este inmueble
+                                        <x-icon name="lock" class="h-5 w-5" /> Reservar
                                     </button>
                                     <p class="reserva-cta-hint">
                                         Bloquea el inmueble durante {{ \App\Models\Reserva::HORAS_PARA_PAGAR }} h
@@ -159,6 +159,12 @@
                             <x-icon name="home" class="h-4 w-4" />
                             Este inmueble se encuentra actualmente {{ mb_strtolower($inmueble->estado->etiqueta()) }}.
                         </div>
+
+                        @if ($inmueble->estado === \App\Enumerados\EstadoInmueble::Reservado)
+                            <button type="button" class="btn-reservar-inmueble" disabled>
+                                <x-icon name="lock" class="h-5 w-5" /> Reservar
+                            </button>
+                        @endif
                     @endif
                 @endif
             </div>

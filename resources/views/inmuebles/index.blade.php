@@ -73,7 +73,7 @@
 
                         @if ($filtros)
                             <a href="{{ route('inmuebles.index') }}" class="btn-limpiar">
-                                <x-icon name="x" class="h-4 w-4" /> Limpiar
+                                <x-icon name="x" class="h-4 w-4" /> Limpiar filtros
                             </a>
                         @endif
                     </div>

@@ -4,7 +4,7 @@
  * así que sin JavaScript la conversación continúa funcionando.
  */
 
-const INTERVALO_SONDEO_MS = 15_000;
+const INTERVALO_SONDEO_MS = 30_000;
 const UMBRAL_AUTOSCROLL_PX = 80;
 
 function estaAbajo(caja) {

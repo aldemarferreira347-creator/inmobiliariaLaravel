@@ -5,6 +5,7 @@ import { iniciarCitas } from './citas';
 import { iniciarContratos } from './contratos';
 import { iniciarCuentaAtras } from './cuenta-atras';
 import { iniciarGaleria } from './galeria';
+import { iniciarEstadoInmueble } from './estado-inmueble';
 import { iniciarFiltroNotificaciones } from './notificaciones';
 import { iniciarPerfil } from './perfil';
 import { iniciarTablas } from './tabla';
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     iniciarContratos();
     iniciarCuentaAtras();
     iniciarGaleria();
+    iniciarEstadoInmueble();
     iniciarFiltroNotificaciones();
     iniciarPerfil();
     iniciarTablas();

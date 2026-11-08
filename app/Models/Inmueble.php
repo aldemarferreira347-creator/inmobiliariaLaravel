@@ -207,6 +207,16 @@ class Inmueble extends Model
         return $query->orderByDesc('fecha_publicacion');
     }
 
+    /** Estados visibles en el listado público (HU-01.1). */
+    public function scopePublicos(Builder $query): Builder
+    {
+        return $query->whereIn('estado', [
+            EstadoInmueble::Disponible,
+            EstadoInmueble::Reservado,
+            EstadoInmueble::Ocupado,
+        ]);
+    }
+
     public function scopeDisponibles(Builder $query): Builder
     {
         return $query->where('estado', EstadoInmueble::Disponible);

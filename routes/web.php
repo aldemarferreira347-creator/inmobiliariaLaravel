@@ -46,7 +46,10 @@ Route::post('stripe/webhook', [StripeWebhookController::class, 'recibir'])->name
  */
 Route::get('/', [InmuebleController::class, 'inicio'])->name('inicio');
 Route::get('inmuebles', [InmuebleController::class, 'index'])->name('inmuebles.index');
-Route::get('inmuebles/{inmueble}', [InmuebleController::class, 'show'])->name('inmuebles.show');
+Route::get('inmuebles/{inmueble}', [InmuebleController::class, 'show'])
+    ->missing(fn () => response()->view('errors.inmueble-no-encontrado', [], 404))
+    ->name('inmuebles.show');
+Route::get('inmuebles/{inmueble}/estado', [InmuebleController::class, 'estado'])->middleware('throttle:60,1')->name('inmuebles.estado');
 
 /*
  * Área del usuario autenticado (HU-18 / HU-25)

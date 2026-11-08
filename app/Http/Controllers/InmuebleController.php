@@ -7,15 +7,16 @@ use App\Enumerados\RolUsuario;
 use App\Http\Requests\FiltroInmuebleRequest;
 use App\Models\Inmueble;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 /**
  * Catálogo público de inmuebles (HU-01 / HU-02), sin autenticación requerida.
  *
- * Modelo principal: {@see \App\Models\Inmueble}. `filtrar()`, `disponibles()`
+ * Modelo principal: {@see Inmueble}. `filtrar()`, `disponibles()`
  * y `recientes()` son scopes del propio modelo; las cifras del home también
- * consultan {@see \App\Models\User} para contar clientes y asesores.
+ * consultan {@see User} para contar clientes y asesores.
  */
 class InmuebleController extends Controller
 {
@@ -32,14 +33,14 @@ class InmuebleController extends Controller
         ]);
     }
 
-    /** Listado público de inmuebles disponibles, paginado y con los filtros de búsqueda aplicados. */
+    /** Listado público de inmuebles (Disponible, Reservado y Ocupado), paginado y con los filtros de búsqueda aplicados. */
     public function index(FiltroInmuebleRequest $request): View
     {
         $filtros = $request->filtros();
 
         return view('inmuebles.index', [
             'inmuebles' => Inmueble::filtrar($filtros)
-                ->disponibles()
+                ->publicos()
                 ->recientes()
                 ->paginate(self::INMUEBLES_POR_PAGINA)
                 ->withQueryString(),
@@ -54,6 +55,12 @@ class InmuebleController extends Controller
             'inmueble' => $inmueble->load('imagenes'),
             'esFavorito' => $inmueble->esFavoritoDe(request()->user()),
         ]);
+    }
+
+    /** Estado actual del inmueble en JSON; lo consulta el sondeo de la ficha (HU-09.3). */
+    public function estado(Inmueble $inmueble): JsonResponse
+    {
+        return response()->json(['estado' => $inmueble->estado->value]);
     }
 
     /**
