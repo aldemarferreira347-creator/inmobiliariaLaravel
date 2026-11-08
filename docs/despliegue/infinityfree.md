@@ -68,3 +68,18 @@ Ningún flujo de pago exige el webhook entrante:
 - **Salida HTTPS a Stripe**: la fila `stripe_https` de la sonda debe mostrar cualquier código HTTP > 0 (401 o 404 son válidos: hubo respuesta de `api.stripe.com`). Con 0 no hay salida HTTPS: solo queda el pago manual (transferencia/efectivo) con revisión del administrador, y HU-20 y HU-23.1 se marcan «No soportado en InfinityFree gratuito» en la matriz de conformidad.
 - **Webhook**: en el panel de Stripe no se registra ningún endpoint para el dominio de InfinityFree; sería bloqueado por el desafío JavaScript `aes.js`. `STRIPE_WEBHOOK_SECRET` puede quedar vacío; la ruta `stripe/webhook` sigue existiendo pero no se usa.
 - **Claves**: solo modo de pruebas (`pk_test_…` en `STRIPE_KEY`, `sk_test_…` en `STRIPE_SECRET`). Stripe.js (`js.stripe.com`) se carga sin Content-Security-Policy, así que no hay cabeceras que ajustar.
+
+## Base de datos de producción (Tarea 9)
+
+`pwsh deploy/infinityfree/exportar-bd.ps1` crea la BD local `inmobiliaria_export` (la de desarrollo no se toca), ejecuta `migrate:fresh --seed` en modo producción con bcrypt y genera `build-infinityfree/bd.sql` (sin `DEFINER`, sin `utf8mb4_0900_ai_ci`, sin datos de `sessions`, `cache`, `cache_locks`, `jobs` y `failed_jobs`; máximo 8 MB). La contraseña inicial del administrador (`admin@inmobiliaria.test`) se genera al azar, se pasa al seeder mediante `ADMIN_PASSWORD_INICIAL` y solo se escribe en `build-infinityfree/CREDENCIALES.txt` (ignorado por git). Importar `bd.sql` desde phpMyAdmin.
+
+### Cambios de esquema posteriores
+
+No hay artisan en el servidor. Para un cambio de esquema:
+
+1. Crear la migración nueva (nunca editar las existentes) y probarla en local.
+2. Obtener solo el SQL del cambio: `php artisan migrate --pretend`.
+3. Pegar ese `ALTER`/`CREATE` en phpMyAdmin (pestaña SQL) sobre la BD de InfinityFree.
+4. Insertar la fila correspondiente en la tabla `migrations` para mantener el registro coherente con el repositorio.
+
+No volver a importar `bd.sql` completo: borraría los datos reales.

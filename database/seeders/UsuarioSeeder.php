@@ -7,6 +7,7 @@ use App\Models\User;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 // Usuarios de demostración, uno por rol, más clientes de relleno
 class UsuarioSeeder extends Seeder
@@ -19,12 +20,24 @@ class UsuarioSeeder extends Seeder
 
     public function run(): void
     {
+        // Contraseña inicial del administrador: obligatoria en producción.
+        // Fuera de producción, si falta la variable, se conserva la contraseña de demostración.
+        $contrasenaAdmin = env('ADMIN_PASSWORD_INICIAL');
+
+        if (app()->isProduction() && blank($contrasenaAdmin)) {
+            throw new RuntimeException('Defina ADMIN_PASSWORD_INICIAL para sembrar usuarios en producción.');
+        }
+
         foreach (self::DEMO as $indice => $datos) {
             User::updateOrCreate(
                 ['email' => $datos['email']],
                 [
                     'nombre' => $datos['nombre'],
-                    'contrasena' => Hash::make(UserFactory::PASSWORD),
+                    'contrasena' => Hash::make(
+                        $datos['rol'] === RolUsuario::Administrador && filled($contrasenaAdmin)
+                            ? $contrasenaAdmin
+                            : UserFactory::PASSWORD
+                    ),
                     'rol' => $datos['rol'],
                     'telefono' => '31000000'.$indice.'0',
                     'documento_tipo' => 'CC',
