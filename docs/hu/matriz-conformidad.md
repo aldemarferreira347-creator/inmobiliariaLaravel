@@ -8,14 +8,14 @@ Estados:
 - **Difiere: texto**: el comportamiento existe, pero el texto exacto entre «…» de la HU no coincide (la columna Notas guarda el texto actual).
 - **Difiere: comportamiento**: el sistema hace algo distinto o incompleto respecto a la HU.
 - **Falta**: no existe ninguna implementación del escenario.
-- **Equivalencia**: se cumple con una equivalencia aceptada (sesión de Laravel de 15 min en lugar de sesiones PHP nativas; vistas SQL → consultas Eloquent; almacenamiento de objetos → disco `public` o privado; Stripe en lugar de Stripe/PayU; CRON horario → planificador por petición `EjecutarTareasPendientes`, ≥15 min; `ON DELETE CASCADE` → cascada en `Inmueble::deleting`).
+- **Equivalencia**: se cumple con una equivalencia aceptada (sesión de Laravel de 15 min en lugar de sesiones PHP nativas; vistas SQL → consultas Eloquent; almacenamiento de objetos → disco `public` o privado; Stripe en lugar de Stripe/PayU; CRON horario → planificador por petición `EjecutarTareasPendientes`, ≥15 min; `ON DELETE CASCADE` → cascada en `Inmueble::deleting`; campo `leido` = 1 → `leido_en` no nulo).
 
 Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (enumeración de cuentas); imágenes solo JPG/PNG (8.2, 25.4). Rutas y archivos de `app/` se abrevian sin el prefijo `app/` (vistas bajo `resources/`, tests bajo `tests/`).
 
 | HU | Escenario | Título | Ruta/acción | Archivo(s) | Test | Estado | Notas |
 |---|---|---|---|---|---|---|---|
-| HU-01 | 1.1 | Carga inicial exitosa | GET /inmuebles (inmuebles.index) | Http/Controllers/InmuebleController.php; views/inmuebles/index.blade.php; components/inmueble-card.blade.php | Feature/CatalogoTest::test_el_catalogo_lista_los_inmuebles | Cumple | El listado público filtra con `disponibles()`: solo muestra inmuebles en estado Disponible, no «todos» (ver 1.3). |
-| HU-01 | 1.2 | Estado disponible | GET /inmuebles/{inmueble} (inmuebles.show) | Http/Controllers/InmuebleController.php; views/inmuebles/show.blade.php; components/estado-badge.blade.php; resources/css/app.css | — | Difiere: comportamiento | Visual: en la ficha la etiqueta «Disponible» usa `.badge-estado.disponible` (azul navy), no verde (solo la tarjeta del listado usa verde). El botón se llama «Reservar este inmueble». |
+| HU-01 | 1.1 | Carga inicial exitosa | GET /inmuebles (inmuebles.index) | Http/Controllers/InmuebleController.php; views/inmuebles/index.blade.php; components/inmueble-card.blade.php | Feature/CatalogoTest::test_el_catalogo_lista_los_inmuebles | Difiere: comportamiento | El listado público filtra con `disponibles()`: solo muestra inmuebles Disponibles, no «todos»; los Reservado/Ocupado no se alcanzan desde el listado (ver 1.3/1.4). Pendiente T12: listar Disponible, Reservado y Ocupado con su etiqueta. |
+| HU-01 | 1.2 | Estado disponible | GET /inmuebles/{inmueble} (inmuebles.show) | Http/Controllers/InmuebleController.php; views/inmuebles/show.blade.php; components/estado-badge.blade.php; resources/css/app.css | — | Difiere: comportamiento | Visual: en la ficha la etiqueta «Disponible» usa `.badge-estado.disponible` (azul navy), no verde (solo la tarjeta del listado usa verde). El botón dice «Reservar este inmueble» (HU: «Reservar»), ver 7.1. |
 | HU-01 | 1.3 | Estado reservado | GET /inmuebles/{inmueble} | Http/Controllers/InmuebleController.php; views/inmuebles/show.blade.php | — | Difiere: comportamiento | Etiqueta «Reservado» en ámbar/dorado (OK). El botón de reservar no se deshabilita: se sustituye por el aviso «Este inmueble se encuentra actualmente reservado.». El listado no incluye inmuebles reservados, solo se llega por enlace directo. |
 | HU-01 | 1.4 | Estado ocupado | GET /inmuebles/{inmueble} | Http/Controllers/InmuebleController.php; views/inmuebles/show.blade.php | — | Cumple | Etiqueta gris «Ocupado»; no se despliega el botón de reservar (ni «Agendar visita»). |
 | HU-01 | 1.5 | Sin inmuebles disponibles | GET /inmuebles | Http/Controllers/InmuebleController.php; views/inmuebles/index.blade.php; views/inmuebles/inicio.blade.php | — | Cumple | «No hay inmuebles disponibles en este momento» (texto exacto) en listado e inicio. |
@@ -42,7 +42,7 @@ Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (
 | HU-06 | 6.2 | Sin reservaciones en la fecha seleccionada | GET /admin/reportes/reservaciones | Admin/ReporteController.php; Servicios/Reportes/*; views/admin/reportes/show.blade.php | Feature/ReporteTest::test_sin_datos_se_informa_al_administrador | Cumple | Muestra «No hay registros disponibles para los filtros seleccionados.» (contiene el texto de la HU). |
 | HU-06 | 6.3 | Error en la generación del reporte | GET /admin/reportes/{tipo} | Admin/ReporteController.php; Servicios/Reportes/* | — | Falta | No hay manejo de errores específico ni opción [Intentar nuevamente]; un fallo termina en la página de error genérica. |
 | HU-06 | 6.4 | Exportar reporte en PDF o Excel | GET /admin/reportes/{tipo}/excel \| /pdf | Admin/ReporteController.php; Servicios/Reportes/*; Reportes/ExportadorExcel.php; ExportadorPdf.php | Feature/ReporteTest::test_cada_tipo_se_exporta_a_excel; ::test_cada_tipo_se_exporta_a_pdf | Cumple | Botones «Excel» y «PDF» (no un único «Exportar»). |
-| HU-07 | 7.1 | Reserva exitosa (creación pendiente de pago) | POST /reservas (reservas.store) | Servicios/ReservaService.php; ReservaController.php; Requests/SolicitarReservaRequest.php | Feature/ReservaTest::test_el_cliente_reserva_un_inmueble_disponible; ::test_el_inmueble_sigue_disponible_hasta_que_se_confirme_el_pago | Cumple | Botón «Reservar este inmueble». Reserva PENDIENTE_PAGO (24 h), inmueble sin cambios. |
+| HU-07 | 7.1 | Reserva exitosa (creación pendiente de pago) | POST /reservas (reservas.store) | Servicios/ReservaService.php; ReservaController.php; Requests/SolicitarReservaRequest.php | Feature/ReservaTest::test_el_cliente_reserva_un_inmueble_disponible; ::test_el_inmueble_sigue_disponible_hasta_que_se_confirme_el_pago | Difiere: texto | Texto actual del botón: «Reservar este inmueble» (HU: «Reservar»; views/inmuebles/show.blade.php:143). Comportamiento correcto: reserva PENDIENTE_PAGO (24 h), inmueble sin cambios. |
 | HU-07 | 7.2 | Usuario no autenticado intenta reservar | GET /login (desde la ficha) | Http/Controllers/InmuebleController.php; views/inmuebles/show.blade.php (enlace «Inicia sesión para reservar»); bootstrap/app.php | — | Difiere: texto | El invitado ve un enlace que lleva a /login sin mensaje «Debe iniciar sesión para reservar un inmueble». |
 | HU-07 | 7.3 | Inmueble no disponible al intentar reservar | POST /reservas | Servicios/ReservaService::asegurarQueEsReservable | — | Cumple | «Este inmueble ya no está disponible.» (texto de la HU + punto final). Sin test que fije el texto. |
 | HU-07 | 7.4 | Reserva duplicada | POST /reservas | Servicios/ReservaService::asegurarQueEsReservable | Feature/ReservaTest::test_un_inmueble_con_reserva_en_proceso_no_admite_otra | Difiere: texto | Actual: «Este inmueble ya tiene una reserva en proceso.» (mismo mensaje para el propio cliente y para otro). No existe «Ya tienes una reserva activa para este inmueble». |
@@ -68,7 +68,7 @@ Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (
 | HU-12 | 12.4 | Notificación al cliente tras la visita | POST /asesor/citas/{cita}/observacion | Servicios/CitaService.php::marcarRealizada (paraUsuario cliente) | — | Cumple | Sin test. |
 | HU-13 | 13.1 | Listado de mensajes no leídos | GET /mensajes (mensajes.index) | MensajeController::index; views/mensajes/partials/bandeja.blade.php | Feature/MensajeTest::test_el_contador_cuenta_solo_los_mensajes_recibidos | Cumple | La bandeja lista todos los hilos con distintivo de no leídos (no filtra solo no leídos); muestra cliente, inmueble y fecha. |
 | HU-13 | 13.2 | Respuesta enviada exitosamente | POST /mensajes/{conversacion} (mensajes.store) | MensajeController::store; Servicios/MensajeService::enviar | Feature/MensajeTest::test_se_envia_un_mensaje_con_adjunto | Cumple | Genera notificación «Nuevo mensaje» (con correo) para el interlocutor. |
-| HU-13 | 13.3 | Mensaje marcado como leído | GET /mensajes/{conversacion}; GET …/nuevos | Servicios/MensajeService::marcarLeidos | Feature/MensajeTest::test_al_abrir_el_hilo_se_marcan_leidos_los_mensajes_recibidos | Cumple | Se usa `leido_en` (timestamp) en lugar del campo `leido = 1`; el mensaje deja de contarse como pendiente. |
+| HU-13 | 13.3 | Mensaje marcado como leído | GET /mensajes/{conversacion}; GET …/nuevos | Servicios/MensajeService::marcarLeidos | Feature/MensajeTest::test_al_abrir_el_hilo_se_marcan_leidos_los_mensajes_recibidos | Equivalencia | `leido_en` no nulo equivale al campo «leido» = 1; el mensaje deja de contarse como pendiente. |
 | HU-13 | 13.4 | Historial de conversación | GET /mensajes/{conversacion} (mensajes.show) | MensajeController::show, ::anteriores | — | Cumple | Orden cronológico, paginado de 20 en 20 con «cargar más». |
 | HU-14 | 14.1 | Registro de venta exitoso | POST /asesor/ventas (asesor.ventas.store) | Asesor/VentaController::store; Servicios/VentaService::registrar; Requests/Asesor/StoreVentaRequest.php | Feature/VentaTest::test_el_asesor_registra_una_venta_y_el_inmueble_queda_reservado | Cumple | Venta «En proceso» e inmueble Reservado; notaría opcional. |
 | HU-14 | 14.2 | Subir escritura pública | POST /asesor/ventas/{venta}/escritura (asesor.ventas.escritura) | Asesor/VentaController::subirEscritura; Servicios/VentaService::adjuntarEscritura; DescargaController::escritura | Feature/VentaTest::test_se_sube_la_escritura_de_una_venta_cerrada | Equivalencia | «Almacenamiento de objetos» → disco local privado; descarga autorizada para administrador, asesor y cliente. Se admite en venta En proceso o Cerrada (no Cancelada). |
@@ -121,7 +121,7 @@ Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (
 | HU-26 | 26.2 | Crear usuario con rol específico | POST /admin/usuarios | Admin/UsuarioController::store | Feature/Admin/GestionUsuariosTest::test_el_administrador_crea_un_asesor | Cumple |   |
 | HU-26 | 26.3 | Desactivar usuario | PATCH /admin/usuarios/{usuario}/estado | Admin/UsuarioController::cambiarEstado; Middleware/EnsureUserIsActive.php | Feature/Auth/AutenticacionTest::test_desactivar_una_cuenta_corta_su_sesion_en_curso | Cumple | Conserva el histórico. |
 | HU-26 | 26.4 | Visualizar permisos por rol | GET /admin/permisos (admin.permisos.index) | Admin/PermisoController::index; Models/Role.php; views/admin/permisos/index.blade.php | Feature/Admin/GestionUsuariosTest::test_la_matriz_de_permisos_es_accesible_para_el_administrador | Cumple | Consulta las tablas de roles/permisos. |
-| HU-27 | 27.1 | Agendamiento exitoso de cita | POST /citas (citas.store) | CitaController::store; Servicios/CitaService.php::solicitar; Requests/SolicitarCitaRequest.php; resources/js/citas.js | Feature/CitaTest::test_el_cliente_solicita_una_visita | Cumple | Botón «Agendar visita» (HU: «Agendar cita»). Cita Pendiente, aviso al personal; franja Lunes–Sábado 08:00–18:00 cada 30 min (config_franja_cita); hasta 30 días. |
+| HU-27 | 27.1 | Agendamiento exitoso de cita | POST /citas (citas.store) | CitaController::store; Servicios/CitaService.php::solicitar; Requests/SolicitarCitaRequest.php; resources/js/citas.js | Feature/CitaTest::test_el_cliente_solicita_una_visita | Difiere: texto | Texto actual del botón: «Agendar visita» (HU: «Agendar cita»; show.blade.php:125, modal-solicitar.blade.php:9). Comportamiento correcto: cita Pendiente, aviso al personal; franja Lunes–Sábado 08:00–18:00 cada 30 min (config_franja_cita); hasta 30 días. |
 | HU-27 | 27.2 | Sin franjas disponibles | GET /citas/franjas-disponibles | resources/js/citas.js; Models/ConfigFranjaCita.php | Feature/CitaTest::test_las_horas_disponibles_excluyen_las_ocupadas | Difiere: texto | Actual: «No hay horarios disponibles para esta fecha. Elige otra.» (HU: «…Por favor seleccione otra»). |
 | HU-27 | 27.3 | Cita duplicada para el mismo inmueble | POST /citas | Servicios/CitaService.php::asegurarSinCitaActiva | Feature/CitaTest::test_hu_27_1_cita_duplicada_simultanea_cancela_la_mas_reciente | Difiere: texto | Actual: «Ya tienes una visita pendiente o asignada para este inmueble.» (HU: «Ya tienes una cita pendiente para este inmueble»). |
 | HU-27 | 27.4 | Cancelar cita propia | POST /citas/{cita}/cancelar (citas.cancelar) | CitaController::cancelar; Servicios/CitaService.php::cancelar | Feature/CitaTest::test_el_cliente_cancela_su_visita | Difiere: comportamiento | Notifica al asesor si estaba asignado, pero no al administrador. |
@@ -132,21 +132,23 @@ Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (
 
 | Estado | Escenarios |
 |---|---|
-| Cumple | 62 |
-| Difiere: texto | 19 |
-| Difiere: comportamiento | 18 |
+| Cumple | 58 |
+| Difiere: texto | 21 |
+| Difiere: comportamiento | 19 |
 | Falta | 2 |
-| Equivalencia | 12 |
+| Equivalencia | 13 |
 | **Total** | **113** |
 
 ## Escenarios no conformes por tarea del plan
 
-**T12** (HU-01, HU-02, 9.3)
+**T12** (HU-01, HU-02, 9.3, 7.1)
 
+- 1.1 Carga inicial exitosa: Difiere: comportamiento
 - 1.2 Estado disponible: Difiere: comportamiento
 - 1.3 Estado reservado: Difiere: comportamiento
 - 2.3 Limpiar filtros aplicados: Difiere: texto
 - 2.5 Inmueble no encontrado: Difiere: comportamiento
+- 7.1 Reserva exitosa (creación pendiente de pago): Difiere: texto
 - 9.3 Notificación al usuario que está viendo el inmueble: Falta
 
 **T13** (HU-03, HU-05, HU-24, HU-25)
@@ -184,6 +186,7 @@ Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (
 
 - 11.3 Detalle de cita: Difiere: comportamiento
 - 11.4 Filtrar citas por estado: Difiere: comportamiento
+- 27.1 Agendamiento exitoso de cita: Difiere: texto
 - 27.2 Sin franjas disponibles: Difiere: texto
 - 27.3 Cita duplicada para el mismo inmueble: Difiere: texto
 - 27.4 Cancelar cita propia: Difiere: comportamiento
@@ -204,5 +207,5 @@ Decisiones por defecto: 5.3 y 24.2 siguen el texto de la HU al pie de la letra (
 - 6.3 Error en la generación del reporte: Falta
 - 21.1 Reporte de pagos: Difiere: comportamiento
 
-Notas: T12 incluye 9.3 (HU-09); T15 incluye de HU-09 solo 9.1, 9.2 y 9.4. Los escenarios «Cumple» sin test (p. ej. 3.4, 4.2, 12.2 a 12.4, 19.4) quedan para que la tarea correspondiente añada la prueba.
+Notas: T12 incluye 9.3 (HU-09) y 7.1 (HU-07); T15 incluye el resto de HU-07 y HU-09. Los escenarios «Cumple» sin test (p. ej. 3.4, 4.2, 12.2 a 12.4, 19.4) quedan para que la tarea correspondiente añada la prueba.
 
