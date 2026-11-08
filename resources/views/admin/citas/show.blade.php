@@ -91,7 +91,7 @@
                 <x-icon name="triangle-alert" class="h-4 w-4" />
                 <span>Esta cita está marcada como realizada pero <strong>no tiene observaciones registradas</strong>.</span>
             </div>
-        @elseif ($cita->estado === \App\Enumerados\EstadoCita::Asignada)
+        @elseif (in_array($cita->estado, [\App\Enumerados\EstadoCita::Asignada, \App\Enumerados\EstadoCita::Confirmada], true))
             <div class="alert info">
                 <x-icon name="circle-help" class="h-4 w-4" />
                 <span>La cita aún no ha sido realizada. Las observaciones estarán disponibles una vez el asesor complete la visita.</span>

@@ -4,6 +4,7 @@ namespace App\Servicios;
 
 use App\Enumerados\EstadoCita;
 use App\Enumerados\EstadoInmueble;
+use App\Enumerados\RolUsuario;
 use App\Enumerados\TipoNotificacion;
 use App\Models\Cita;
 use App\Models\CitaHistorial;
@@ -37,7 +38,7 @@ class CitaService
             // Bloqueo pesimista: evita que dos clientes agenden la misma franja a la vez
             if (Cita::query()->ocupaFranja($inmueble->id, $fechaHora)->lockForUpdate()->exists()) {
                 throw ValidationException::withMessages([
-                    'hora_cita' => 'No hay horarios disponibles para esa fecha/hora. Por favor selecciona otra.',
+                    'hora_cita' => 'No hay horarios disponibles para esta fecha. Por favor seleccione otra',
                 ]);
             }
 
@@ -74,7 +75,7 @@ class CitaService
         return $cita;
     }
 
-    // Asigna (o reasigna) un asesor a una cita pendiente (HU-10.1 / HU-10.3)
+    // Asigna (o reasigna) un asesor a una cita viva (HU-10.1 / HU-10.3)
     public function asignar(Cita $cita, User $asesor, User $admin): void
     {
         if (! $cita->estado->admiteAsignacion()) {
@@ -107,12 +108,36 @@ class CitaService
         );
     }
 
-    // El asesor marca la visita como realizada y registra sus observaciones (HU-12.1)
-    public function marcarRealizada(Cita $cita, User $asesor, string $observaciones): void
+    // El asesor asignado confirma la visita con el cliente (HU-11.4)
+    public function confirmar(Cita $cita, User $asesor): void
     {
         if ($cita->estado !== EstadoCita::Asignada) {
             throw ValidationException::withMessages([
-                'estado' => 'Solo se puede completar una cita que está Asignada.',
+                'estado' => 'Solo se puede confirmar una cita que está Asignada.',
+            ]);
+        }
+
+        DB::transaction(function () use ($cita, $asesor) {
+            $cita->update(['estado' => EstadoCita::Confirmada]);
+            CitaHistorial::registrar($cita, $asesor, 'CONFIRMADA', "Visita confirmada por el asesor {$asesor->nombre}.");
+        });
+
+        $this->notificaciones->paraUsuario(
+            $cita->cliente,
+            'Cita confirmada',
+            "Tu visita a «{$cita->inmueble->titulo}» el {$cita->fecha->format('d/m/Y H:i')} fue confirmada por el asesor.",
+            TipoNotificacion::Exito,
+            'cita',
+            $cita->id,
+        );
+    }
+
+    // El asesor marca la visita como realizada y registra sus observaciones (HU-12.1)
+    public function marcarRealizada(Cita $cita, User $asesor, string $observaciones): void
+    {
+        if (! in_array($cita->estado, [EstadoCita::Asignada, EstadoCita::Confirmada], true)) {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede completar una cita que está Asignada o Confirmada.',
             ]);
         }
 
@@ -163,16 +188,13 @@ class CitaService
             CitaHistorial::registrar($cita, $cliente, 'CANCELADA', 'El cliente canceló la cita.');
         });
 
+        $mensaje = "El cliente canceló la visita a «{$cita->inmueble->titulo}» del {$cita->fecha->format('d/m/Y H:i')}.";
+
         if ($cita->asesor_id !== null) {
-            $this->notificaciones->paraUsuario(
-                $cita->asesor,
-                'Cita cancelada',
-                "El cliente canceló la visita a «{$cita->inmueble->titulo}».",
-                TipoNotificacion::Aviso,
-                'cita',
-                $cita->id,
-            );
+            $this->notificaciones->paraUsuario($cita->asesor, 'Cita cancelada', $mensaje, TipoNotificacion::Aviso, 'cita', $cita->id);
         }
+
+        $this->notificaciones->paraRol(RolUsuario::Administrador, 'Cita cancelada', $mensaje, TipoNotificacion::Aviso);
     }
 
     /**
@@ -182,7 +204,7 @@ class CitaService
     {
         if ($forzar || Cita::query()->activaDeClientePorInmueble($cliente->id, $inmueble->id)->exists()) {
             throw ValidationException::withMessages([
-                'inmueble' => 'Ya tienes una visita pendiente o asignada para este inmueble.',
+                'inmueble' => 'Ya tienes una cita pendiente para este inmueble',
             ]);
         }
     }
@@ -200,7 +222,7 @@ class CitaService
 
         if (! ConfigFranjaCita::esHoraValida($fechaHora)) {
             throw ValidationException::withMessages([
-                'hora_cita' => 'No hay horarios disponibles para esa fecha/hora. Por favor selecciona otra.',
+                'hora_cita' => 'No hay horarios disponibles para esta fecha. Por favor seleccione otra',
             ]);
         }
     }

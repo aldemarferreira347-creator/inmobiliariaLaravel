@@ -582,6 +582,7 @@ footer {
 .badge-cancelada { @apply bg-(--color-fill-strong) text-(--color-ink)/60; }
 .badge-pendiente-pago { @apply bg-(--color-gold-500)/20 text-(--color-gold-600); }
 .badge-pendiente-conf { @apply bg-(--color-navy-500)/15 text-(--color-acento-700); }
+.badge-cita-confirmada { @apply bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300; }
 .badge-rechazada { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
 .badge-expirada { @apply bg-(--color-fill-strong) text-(--color-ink)/50; }
 .accent-blue {

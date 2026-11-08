@@ -43,7 +43,8 @@ class SolicitarCitaRequest extends FormRequest
                 return;
             }
 
-            if ($fechaHora->greaterThan(now()->addDays(30))) {
+            // La ventana cuenta días de calendario: hoy y los 30 siguientes
+            if ($fechaHora->copy()->startOfDay()->greaterThan(today()->addDays(30))) {
                 $validator->errors()->add('fecha_cita', 'No puedes agendar una visita con más de 30 días de anticipación.');
             }
         });

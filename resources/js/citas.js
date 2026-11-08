@@ -1,5 +1,5 @@
 /*
- * Selector de hora del formulario «Agendar visita» (HU-27.1/27.2). Las horas
+ * Selector de hora del formulario «Agendar cita» (HU-27.1/27.2). Las horas
  * dependen de la fecha elegida, así que se cargan por AJAX en vez de listar
  * un horario fijo que podría no respetar la franja configurada u ocuparse.
  */
@@ -38,7 +38,7 @@ async function cargarHoras(formulario) {
         const respuesta = await fetch(url, { headers: { Accept: 'application/json' } });
         const datos = await respuesta.json();
 
-        poblarHoras(select, hint, datos.horas ?? [], 'No hay horarios disponibles para esta fecha. Elige otra.');
+        poblarHoras(select, hint, datos.horas ?? [], 'No hay horarios disponibles para esta fecha. Por favor seleccione otra');
     } catch {
         poblarHoras(select, hint, [], 'No se pudieron cargar los horarios. Intenta nuevamente.');
     }

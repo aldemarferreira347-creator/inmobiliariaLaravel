@@ -13,6 +13,7 @@ enum EstadoCita: string
 
     case Pendiente = 'Pendiente';
     case Asignada = 'Asignada';
+    case Confirmada = 'Confirmada';
     case Realizada = 'Realizada';
     case Cancelada = 'Cancelada';
 
@@ -26,6 +27,7 @@ enum EstadoCita: string
         return match ($this) {
             self::Pendiente => 'badge-pendiente-pago',
             self::Asignada => 'badge-pendiente-conf',
+            self::Confirmada => 'badge-cita-confirmada',
             self::Realizada => 'badge-confirmada',
             self::Cancelada => 'badge-cancelada',
         };
@@ -36,6 +38,7 @@ enum EstadoCita: string
         return match ($this) {
             self::Pendiente => 'clock',
             self::Asignada => 'user',
+            self::Confirmada => 'calendar',
             self::Realizada => 'circle-check',
             self::Cancelada => 'ban',
         };
@@ -50,12 +53,18 @@ enum EstadoCita: string
     // El admin solo asigna/reasigna asesor mientras la cita sigue viva
     public function admiteAsignacion(): bool
     {
-        return in_array($this, [self::Pendiente, self::Asignada], true);
+        return in_array($this, self::activas(), true);
+    }
+
+    // Citas vivas: ocupan la franja y cuentan como «cita activa» del cliente (HU-27.1 / 27.3)
+    public static function activas(): array
+    {
+        return [self::Pendiente, self::Asignada, self::Confirmada];
     }
 
     // El cliente solo retira una visita que todavía no se realizó
     public function admiteCancelacion(): bool
     {
-        return in_array($this, [self::Pendiente, self::Asignada], true);
+        return in_array($this, self::activas(), true);
     }
 }

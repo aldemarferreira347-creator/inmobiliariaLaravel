@@ -29,6 +29,14 @@
                 <span>{{ $cita->cliente->telefono ?? '—' }}</span>
             </div>
             <div class="detail-item">
+                <span class="rinfo-label">Dirección del inmueble</span>
+                <span>{{ $cita->inmueble->direccion }}, {{ $cita->inmueble->barrio }}, {{ $cita->inmueble->ciudad }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="rinfo-label">Estado</span>
+                <span>{{ $cita->estado->etiqueta() }}</span>
+            </div>
+            <div class="detail-item">
                 <span class="rinfo-label">Inmueble</span>
                 <a href="{{ route('inmuebles.show', $cita->inmueble) }}" class="panel-link">
                     {{ $cita->inmueble->codigo }} <x-icon name="external-link" class="h-3.5 w-3.5" />
@@ -37,9 +45,24 @@
         </div>
     </div>
 
+    @if ($cita->estado === \App\Enumerados\EstadoCita::Asignada)
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <h2><x-icon name="circle-check" class="h-5 w-5" /> Confirmar la visita</h2>
+            </div>
+            <p class="subtitle mb-4">Confirma con el cliente la fecha y hora de la visita; se le avisará.</p>
+            <form method="POST" action="{{ route('asesor.citas.confirmar', $cita) }}">
+                @csrf
+                <button type="submit" class="btn-panel-primary">
+                    <x-icon name="check" class="h-4 w-4" /> Confirmar cita
+                </button>
+            </form>
+        </div>
+    @endif
+
     <div class="panel-card">
         <div class="panel-card-header">
-            <h2><x-icon name="file-text" class="h-5 w-5" /> Observaciones de la visita</h2>
+            <h2><x-icon name="file-text" class="h-5 w-5" /> Observaciones de la visita (notas)</h2>
         </div>
 
         @if ($cita->estado === \App\Enumerados\EstadoCita::Realizada || $cita->observacion)
@@ -61,7 +84,7 @@
                     <x-icon name="save" class="h-4 w-4" /> Guardar cambios
                 </button>
             </form>
-        @elseif ($cita->estado === \App\Enumerados\EstadoCita::Asignada)
+        @elseif (in_array($cita->estado, [\App\Enumerados\EstadoCita::Asignada, \App\Enumerados\EstadoCita::Confirmada], true))
             <p class="subtitle mb-4">Registra el resultado de la visita para marcarla como realizada.</p>
 
             <form method="POST" action="{{ route('asesor.citas.observacion', $cita) }}">

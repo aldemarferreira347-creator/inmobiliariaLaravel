@@ -6,7 +6,7 @@
 <div class="modal-overlay" id="modal-cita" @if ($errors->hasAny(['inmueble', 'hora_cita', 'fecha_cita'])) data-modal-abierto @endif>
     <div class="modal-reserva-box">
         <div class="modal-reserva-header">
-            <h2><x-icon name="calendar" class="h-5 w-5" /> Agendar visita</h2>
+            <h2><x-icon name="calendar" class="h-5 w-5" /> Agendar cita</h2>
             <button type="button" class="modal-box-close" data-modal-cerrar="modal-cita" aria-label="Cerrar">
                 <x-icon name="x" class="h-5 w-5" />
             </button>
@@ -25,6 +25,10 @@
                 data-franjas-url="{{ route('citas.franjas-disponibles') }}">
                 @csrf
                 <input type="hidden" name="inmueble_id" value="{{ $inmueble->id }}">
+
+                @error('inmueble')
+                    <span class="error-text">{{ $message }}</span>
+                @enderror
 
                 <div class="modal-field">
                     <label for="fecha_cita">Fecha de la visita <span class="req">*</span></label>

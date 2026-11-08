@@ -91,7 +91,7 @@ class ConfigFranjaCita extends Model
         $ocupadas = Cita::query()
             ->where('inmueble_id', $inmuebleId)
             ->whereDate('fecha', $fechaYmd)
-            ->whereIn('estado', [EstadoCita::Pendiente, EstadoCita::Asignada])
+            ->whereIn('estado', EstadoCita::activas())
             ->get()
             ->map(fn (Cita $cita) => $cita->fecha->format('H:i'))
             ->all();

@@ -86,7 +86,7 @@ class Cita extends Model
     {
         return $query->where('cliente_id', $clienteId)
             ->where('inmueble_id', $inmuebleId)
-            ->whereIn('estado', [EstadoCita::Pendiente, EstadoCita::Asignada]);
+            ->whereIn('estado', EstadoCita::activas());
     }
 
     // Evita que dos clientes distintos reserven la misma franja para el mismo inmueble
@@ -94,7 +94,7 @@ class Cita extends Model
     {
         return $query->where('inmueble_id', $inmuebleId)
             ->where('fecha', $fecha)
-            ->whereIn('estado', [EstadoCita::Pendiente, EstadoCita::Asignada]);
+            ->whereIn('estado', EstadoCita::activas());
     }
 
     public function tieneObservacion(): bool

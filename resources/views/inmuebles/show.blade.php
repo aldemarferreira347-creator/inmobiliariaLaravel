@@ -122,7 +122,7 @@
                             @if ($inmueble->estado !== \App\Enumerados\EstadoInmueble::Ocupado)
                                 @can('create', \App\Models\Cita::class)
                                     <button type="button" class="btn-agendar-visita" data-modal-abrir="modal-cita">
-                                        <x-icon name="calendar" class="h-5 w-5" /> Agendar visita
+                                        <x-icon name="calendar" class="h-5 w-5" /> Agendar cita
                                     </button>
                                 @endcan
                             @endif
@@ -130,6 +130,17 @@
                             <a href="{{ route('login') }}" class="btn-contactar-asesor">
                                 <x-icon name="message-square" class="h-5 w-5" /> Contactar asesor
                             </a>
+
+                            {{-- HU-27.6: el invitado pulsa «Agendar cita» y la ruta protegida lo envía al login --}}
+                            @if ($inmueble->estado !== \App\Enumerados\EstadoInmueble::Ocupado)
+                                <form method="POST" action="{{ route('citas.store') }}">
+                                    @csrf
+                                    <input type="hidden" name="inmueble_id" value="{{ $inmueble->id }}">
+                                    <button type="submit" class="btn-agendar-visita">
+                                        <x-icon name="calendar" class="h-5 w-5" /> Agendar cita
+                                    </button>
+                                </form>
+                            @endif
                         @endauth
                     </div>
 

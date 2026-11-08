@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(function (Request $peticion) {
             $mensajesPorRuta = [
                 'reservas.store' => 'Debe iniciar sesión para reservar un inmueble',
+                'citas.store' => 'Debe iniciar sesión para agendar una cita',
             ];
 
             $mensaje = null;

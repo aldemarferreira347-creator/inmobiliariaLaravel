@@ -52,6 +52,18 @@ class CitaController extends Controller
         ]);
     }
 
+    /** El asesor asignado confirma la visita y se avisa al cliente. */
+    public function confirmar(Request $request, Cita $cita): RedirectResponse
+    {
+        $this->authorize('confirmar', $cita);
+
+        $this->citas->confirmar($cita, $request->user());
+
+        return redirect()
+            ->route('asesor.citas.show', $cita)
+            ->with(['mensaje' => 'Cita confirmada correctamente.', 'tipo' => 'success']);
+    }
+
     /** Marca la visita como realizada y registra la observación del asesor. */
     public function registrarObservacion(RegistrarObservacionRequest $request, Cita $cita): RedirectResponse
     {

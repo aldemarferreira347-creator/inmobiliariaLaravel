@@ -127,6 +127,7 @@ Route::middleware('auth')
         Route::middleware('rol:asesor')->group(function () {
             Route::get('citas', [AsesorCitaController::class, 'index'])->name('citas.index');
             Route::get('citas/{cita}', [AsesorCitaController::class, 'show'])->name('citas.show');
+            Route::post('citas/{cita}/confirmar', [AsesorCitaController::class, 'confirmar'])->name('citas.confirmar');
             Route::post('citas/{cita}/observacion', [AsesorCitaController::class, 'registrarObservacion'])->name('citas.observacion');
             Route::patch('citas/{cita}/observacion', [AsesorCitaController::class, 'editarObservacion'])->name('citas.observacion.editar');
         });

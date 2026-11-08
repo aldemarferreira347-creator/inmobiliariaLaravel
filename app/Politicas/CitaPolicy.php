@@ -46,6 +46,12 @@ class CitaPolicy
         return $cita->cliente_id === $usuario->id && $cita->estado->admiteCancelacion();
     }
 
+    // Solo el asesor asignado confirma la visita
+    public function confirmar(User $usuario, Cita $cita): bool
+    {
+        return $cita->asesor_id === $usuario->id;
+    }
+
     // Solo el asesor asignado registra o edita las observaciones de la visita
     public function registrarObservacion(User $usuario, Cita $cita): bool
     {
