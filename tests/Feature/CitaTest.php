@@ -7,7 +7,9 @@ use App\Models\Cita;
 use App\Models\Inmueble;
 use App\Models\ObservacionCita;
 use App\Models\User;
+use App\Servicios\CitaService;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class CitaTest extends TestCase
@@ -157,5 +159,31 @@ class CitaTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->post(route('citas.cancelar', $this->citaAsignada()))
             ->assertForbidden();
+    }
+
+    public function test_hu_27_1_cita_duplicada_simultanea_cancela_la_mas_reciente(): void
+    {
+        $cliente = User::factory()->create();
+        $inmueble = Inmueble::factory()->create();
+        $inyectada = false;
+
+        Cita::creating(function () use ($cliente, $inmueble, &$inyectada) {
+            if ($inyectada) {
+                return;
+            }
+            $inyectada = true;
+            Cita::create(['cliente_id' => $cliente->id, 'inmueble_id' => $inmueble->id, 'fecha' => now()->addDays(3), 'estado' => EstadoCita::Pendiente]);
+        });
+
+        try {
+            app(CitaService::class)->solicitar($inmueble, $cliente, $this->fechaValida());
+            $this->fail('Debió rechazar la cita duplicada.');
+        } catch (ValidationException $e) {
+            $this->assertSame('Ya tienes una visita pendiente o asignada para este inmueble.', $e->errors()['inmueble'][0]);
+        }
+
+        // La solicitud nueva nunca queda activa: con InnoDB la transacción se
+        // revierte entera; con MyISAM la más reciente queda cancelada
+        $this->assertSame(0, Cita::where('cliente_id', $cliente->id)->where('fecha', $this->fechaValida())->where('estado', EstadoCita::Pendiente)->count());
     }
 }

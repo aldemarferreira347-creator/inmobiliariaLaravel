@@ -2,13 +2,21 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enumerados\EstadoCita;
 use App\Enumerados\EstadoInmueble;
 use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoInmueble;
+use App\Models\Cita;
+use App\Models\CitaHistorial;
+use App\Models\Conversacion;
+use App\Models\ImagenInmueble;
 use App\Models\Inmueble;
+use App\Models\ObservacionCita;
 use App\Models\Reserva;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -180,5 +188,51 @@ class GestionInmueblesTest extends TestCase
         $this->assertCount(1, $inmueble->imagenes);
         $this->assertTrue($inmueble->imagenes->first()->es_principal);
         $this->assertSame($inmueble->imagenes->first()->url, $inmueble->imagen);
+    }
+
+    public function test_hu_18_4_eliminar_inmueble_borra_favoritos_imagenes_y_citas_sin_fk(): void
+    {
+        Storage::fake('public');
+        $inmueble = Inmueble::factory()->create();
+        $clientes = User::factory()->count(2)->create();
+        $asesor = User::factory()->create();
+
+        foreach ($clientes as $cliente) {
+            DB::table('favorito')->insert(['usuario_id' => $cliente->id, 'inmueble_id' => $inmueble->id]);
+        }
+
+        $rutas = [];
+        foreach (['uno.jpg', 'dos.jpg'] as $orden => $nombre) {
+            Storage::disk('public')->put("inmuebles/{$nombre}", 'contenido');
+            $rutas[] = "inmuebles/{$nombre}";
+            ImagenInmueble::create(['inmueble_id' => $inmueble->id, 'url' => "storage/inmuebles/{$nombre}", 'es_principal' => $orden === 0, 'orden' => $orden]);
+        }
+
+        $cita = Cita::create(['cliente_id' => $clientes[0]->id, 'asesor_id' => $asesor->id, 'inmueble_id' => $inmueble->id, 'fecha' => now()->addDay(), 'estado' => EstadoCita::Asignada]);
+        CitaHistorial::registrar($cita, $asesor, 'ASIGNADA', 'Asignada.');
+        ObservacionCita::guardarPara($cita, $asesor, 'Observación de la visita.');
+        $conversacion = Conversacion::create(['cliente_id' => $clientes[0]->id, 'asesor_id' => $asesor->id, 'inmueble_id' => $inmueble->id]);
+
+        // Simula MyISAM: sin claves foráneas no hay cascadas en la base de datos.
+        // SQLite ignora el PRAGMA dentro de una transacción, así que se cierra la
+        // que envuelve la prueba (la base en memoria es nueva en cada prueba).
+        DB::commit();
+        Schema::disableForeignKeyConstraints();
+
+        $this->actingAs($this->administrador())
+            ->delete(route('admin.inmuebles.destroy', $inmueble))
+            ->assertRedirect(route('admin.inmuebles.index'));
+
+        $this->assertDatabaseMissing('inmueble', ['id' => $inmueble->id]);
+        $this->assertDatabaseMissing('favorito', ['inmueble_id' => $inmueble->id]);
+        $this->assertDatabaseMissing('imageninmueble', ['inmueble_id' => $inmueble->id]);
+        $this->assertDatabaseMissing('cita', ['inmueble_id' => $inmueble->id]);
+        $this->assertDatabaseMissing('cita_historial', ['cita_id' => $cita->id]);
+        $this->assertDatabaseMissing('observacioncita', ['cita_id' => $cita->id]);
+        $this->assertDatabaseHas('conversacion', ['id' => $conversacion->id, 'inmueble_id' => null]);
+
+        foreach ($rutas as $ruta) {
+            Storage::disk('public')->assertMissing($ruta);
+        }
     }
 }

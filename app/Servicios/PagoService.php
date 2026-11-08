@@ -102,18 +102,27 @@ class PagoService
      */
     public function aprobar(Pago $pago, ?User $revisor = null): void
     {
-        DB::transaction(function () use ($pago, $revisor) {
+        $aplicado = DB::transaction(function () use ($pago, $revisor) {
             $this->bloquearParaRevision($pago);
 
-            $pago->update([
-                'estado' => EstadoPago::Pagado,
+            if (! $this->revisarSiSigueEnRevision($pago, [
+                'estado' => EstadoPago::Pagado->value,
                 'revisado_por' => $revisor?->id,
                 'revisado_en' => now(),
                 'motivo_rechazo' => null,
-            ]);
+            ])) {
+                return false;
+            }
 
             $this->reservas->confirmar($pago->reserva, $revisor);
+
+            return true;
         });
+
+        // Otra petición se adelantó: no se repite el comprobante ni el aviso
+        if (! $aplicado) {
+            return;
+        }
 
         // HU-23.1: comprobante al correo del cliente. Un fallo de envío no
         // revierte una reserva que ya quedó confirmada.
@@ -140,19 +149,34 @@ class PagoService
      */
     public function rechazar(Pago $pago, ?User $revisor, string $motivo): void
     {
-        DB::transaction(function () use ($pago, $revisor, $motivo) {
+        $aplicado = DB::transaction(function () use ($pago, $revisor, $motivo) {
             $this->bloquearParaRevision($pago);
 
-            $pago->update([
-                'estado' => EstadoPago::Rechazado,
+            if (! $this->revisarSiSigueEnRevision($pago, [
+                'estado' => EstadoPago::Rechazado->value,
                 'revisado_por' => $revisor?->id,
                 'revisado_en' => now(),
                 'motivo_rechazo' => $motivo,
-            ]);
+            ])) {
+                return false;
+            }
 
             $reserva = $pago->reserva;
             $anterior = $reserva->estado;
-            $reserva->update(['estado' => EstadoReserva::PendientePago]);
+
+            // Compare-and-swap: la reserva solo vuelve a «Pendiente de pago» si
+            // sigue esperando este pago (sin FK ni transacciones no basta la relectura)
+            $cambiadas = Reserva::whereKey($reserva->id)
+                ->where('estado', EstadoReserva::ProcesandoPago->value)
+                ->update(['estado' => EstadoReserva::PendientePago->value]);
+
+            if ($cambiadas === 0) {
+                throw ValidationException::withMessages([
+                    'pago' => 'La reserva ya no está esperando este pago.',
+                ]);
+            }
+
+            $reserva->refresh();
 
             HistorialReserva::registrar(
                 $reserva,
@@ -162,7 +186,13 @@ class PagoService
                 $revisor?->id,
                 request()?->ip(),
             );
+
+            return true;
         });
+
+        if (! $aplicado) {
+            return;
+        }
 
         $this->notificaciones->paraUsuario(
             $pago->reserva->cliente,
@@ -173,6 +203,30 @@ class PagoService
             $pago->reserva_id,
             conCorreo: true,
         );
+    }
+
+    /**
+     * Compare-and-swap sobre el pago: solo cambia si en la base sigue en
+     * revisión. Con MyISAM no hay transacciones ni bloqueos de fila, así que la
+     * relectura de `bloquearParaRevision` no basta: dos peticiones podrían
+     * pasarla a la vez. El UPDATE condicional lo gana una sola; la otra no
+     * modifica nada (devuelve false) y no repite historial ni notificaciones.
+     *
+     * @param  array<string, mixed>  $cambios
+     */
+    private function revisarSiSigueEnRevision(Pago $pago, array $cambios): bool
+    {
+        $cambiadas = Pago::whereKey($pago->id)
+            ->whereIn('estado', [EstadoPago::Pendiente->value, EstadoPago::Procesando->value])
+            ->update($cambios);
+
+        if ($cambiadas === 0) {
+            return false;
+        }
+
+        $pago->refresh();
+
+        return true;
     }
 
     /**

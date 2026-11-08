@@ -31,11 +31,7 @@ class CitaService
     {
         $this->asegurarQueEsVisitable($inmueble, $fechaHora);
 
-        if (Cita::query()->activaDeClientePorInmueble($cliente->id, $inmueble->id)->exists()) {
-            throw ValidationException::withMessages([
-                'inmueble' => 'Ya tienes una visita pendiente o asignada para este inmueble.',
-            ]);
-        }
+        $this->asegurarSinCitaActiva($inmueble, $cliente);
 
         $cita = DB::transaction(function () use ($inmueble, $cliente, $fechaHora) {
             // Bloqueo pesimista: evita que dos clientes agenden la misma franja a la vez
@@ -45,12 +41,26 @@ class CitaService
                 ]);
             }
 
-            return Cita::create([
+            $cita = Cita::create([
                 'cliente_id' => $cliente->id,
                 'inmueble_id' => $inmueble->id,
                 'fecha' => $fechaHora,
                 'estado' => EstadoCita::Pendiente,
             ]);
+
+            // Sin bloqueos reales (MyISAM) otra petición pudo insertar su cita
+            // entre la comprobación y el insert: se conserva la más antigua.
+            $hayAnterior = Cita::query()
+                ->activaDeClientePorInmueble($cliente->id, $inmueble->id)
+                ->where('id', '<', $cita->id)
+                ->exists();
+
+            if ($hayAnterior) {
+                Cita::whereKey($cita->id)->update(['estado' => EstadoCita::Cancelada->value]);
+                $this->asegurarSinCitaActiva($inmueble, $cliente, true);
+            }
+
+            return $cita;
         });
 
         $this->notificaciones->paraStaff(
@@ -162,6 +172,18 @@ class CitaService
                 'cita',
                 $cita->id,
             );
+        }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function asegurarSinCitaActiva(Inmueble $inmueble, User $cliente, bool $forzar = false): void
+    {
+        if ($forzar || Cita::query()->activaDeClientePorInmueble($cliente->id, $inmueble->id)->exists()) {
+            throw ValidationException::withMessages([
+                'inmueble' => 'Ya tienes una visita pendiente o asignada para este inmueble.',
+            ]);
         }
     }
 

@@ -148,4 +148,26 @@ class ReservaTest extends TestCase
             'cambiado_por' => null,
         ]);
     }
+
+    public function test_hu_07_4_dos_reservas_simultaneas_dejan_solo_la_primera(): void
+    {
+        $inmueble = Inmueble::factory()->deArriendo()->create();
+        $inyectada = false;
+
+        // La otra petición inserta su reserva entre la comprobación y el insert propio
+        Reserva::creating(function () use ($inmueble, &$inyectada) {
+            if ($inyectada) {
+                return;
+            }
+            $inyectada = true;
+            Reserva::factory()->create(['inmueble_id' => $inmueble->id]);
+        });
+
+        $cliente = User::factory()->create();
+
+        $this->solicitar($cliente, $inmueble)->assertSessionHasErrors('inmueble');
+
+        // Con InnoDB la transacción se revierte entera; con MyISAM queda cancelada
+        $this->assertSame(0, Reserva::where('usuario_id', $cliente->id)->whereIn('estado', EstadoReserva::activas())->count());
+    }
 }

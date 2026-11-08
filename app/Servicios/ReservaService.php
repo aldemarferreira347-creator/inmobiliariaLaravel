@@ -59,6 +59,10 @@ class ReservaService
                 'notas_cliente' => $notas,
             ]);
 
+            // Sin bloqueos reales (MyISAM) dos peticiones pueden pasar la
+            // comprobación a la vez: tras insertar se revisa y gana la más antigua.
+            $this->descartarSiHayOtraAnterior($reserva);
+
             HistorialReserva::registrar(
                 $reserva,
                 null,
@@ -201,7 +205,21 @@ class ReservaService
     {
         DB::transaction(function () use ($reserva, $nuevo, $comentario, $autor) {
             $anterior = $reserva->estado;
-            $reserva->update(['estado' => $nuevo]);
+
+            // Compare-and-swap: sin transacciones (MyISAM) solo cambia si el
+            // estado en la base sigue siendo el que esta petición leyó; si otra
+            // petición se adelantó, no se duplica ni el cambio ni el historial.
+            $cambiadas = Reserva::whereKey($reserva->id)
+                ->where('estado', $anterior->value)
+                ->update(['estado' => $nuevo->value]);
+
+            if ($cambiadas === 0) {
+                throw ValidationException::withMessages([
+                    'estado' => 'Esta reserva cambió de estado mientras se procesaba la solicitud.',
+                ]);
+            }
+
+            $reserva->refresh();
 
             HistorialReserva::registrar($reserva, $anterior->value, $nuevo->value, $comentario, $autor?->id, request()?->ip());
         });
@@ -217,6 +235,28 @@ class ReservaService
         $inmueble = $reserva->inmueble->fresh();
 
         $inmueble->update(['estado' => $inmueble->estadoCalculado()]);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function descartarSiHayOtraAnterior(Reserva $reserva): void
+    {
+        $hayAnterior = Reserva::query()
+            ->where('inmueble_id', $reserva->inmueble_id)
+            ->whereIn('estado', EstadoReserva::bloqueanInmueble())
+            ->where('id', '<', $reserva->id)
+            ->exists();
+
+        if (! $hayAnterior) {
+            return;
+        }
+
+        Reserva::whereKey($reserva->id)->update(['estado' => EstadoReserva::Cancelada->value]);
+
+        throw ValidationException::withMessages([
+            'inmueble' => 'Este inmueble ya tiene una reserva en proceso.',
+        ]);
     }
 
     /**

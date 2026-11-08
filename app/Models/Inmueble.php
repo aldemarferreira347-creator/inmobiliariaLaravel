@@ -8,6 +8,7 @@ use App\Enumerados\EstadoReserva;
 use App\Enumerados\EstadoVenta;
 use App\Enumerados\ModalidadInmueble;
 use App\Enumerados\TipoInmueble;
+use App\Servicios\ImagenInmuebleService;
 use Database\Factories\InmuebleFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -70,6 +72,33 @@ class Inmueble extends Model
             'parqueadero' => 'boolean',
             'fecha_publicacion' => 'datetime',
         ];
+    }
+
+    /**
+     * Borrado en cascada desde la aplicación (HU-04.3 / HU-18.4).
+     *
+     * El hosting puede usar MyISAM, que ignora las claves foráneas: ni
+     * `cascadeOnDelete` ni `nullOnDelete` se ejecutarían y quedarían filas
+     * huérfanas y archivos en disco. Se replica aquí lo que declaran las
+     * migraciones. Las reservas y ventas (`restrictOnDelete`) no se tocan: el
+     * controlador ya bloquea la eliminación si hay reservas activas.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Inmueble $inmueble) {
+            $citas = DB::table('cita')->where('inmueble_id', $inmueble->id)->pluck('id');
+
+            DB::table('observacioncita')->whereIn('cita_id', $citas)->delete();
+            DB::table('cita_historial')->whereIn('cita_id', $citas)->delete();
+            DB::table('cita')->where('inmueble_id', $inmueble->id)->delete();
+            DB::table('favorito')->where('inmueble_id', $inmueble->id)->delete();
+
+            // Archivos primero (leen las filas), luego las filas de imageninmueble
+            app(ImagenInmuebleService::class)->eliminarTodas($inmueble);
+            DB::table('imageninmueble')->where('inmueble_id', $inmueble->id)->delete();
+
+            DB::table('conversacion')->where('inmueble_id', $inmueble->id)->update(['inmueble_id' => null]);
+        });
     }
 
     // ----------------------------------------------------------------

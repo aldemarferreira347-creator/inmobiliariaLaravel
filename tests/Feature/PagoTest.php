@@ -6,12 +6,15 @@ use App\Enumerados\EstadoInmueble;
 use App\Enumerados\EstadoPago;
 use App\Enumerados\EstadoReserva;
 use App\Enumerados\MetodoPago;
+use App\Models\HistorialReserva;
 use App\Models\Inmueble;
+use App\Models\Notificacion;
 use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\WebhookEvento;
 use App\Servicios\PagoService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Tests\TestCase;
@@ -206,5 +209,52 @@ class PagoTest extends TestCase
             ->mapWithKeys(fn ($valor, $clave) => ['HTTP_'.strtoupper(str_replace('-', '_', $clave)) => $valor])
             ->put('CONTENT_TYPE', 'application/json')
             ->all();
+    }
+
+    /**
+     * Simula, sin transacciones ni bloqueos, que otra petición aprueba el pago
+     * justo después de que esta lo leyó como «en revisión».
+     */
+    private function simularAprobacionConcurrente(Pago $pago): void
+    {
+        $hecho = false;
+
+        Pago::retrieved(function (Pago $leido) use ($pago, &$hecho) {
+            if ($hecho || $leido->id !== $pago->id) {
+                return;
+            }
+            $hecho = true;
+
+            DB::table('pago')->where('id', $pago->id)->update(['estado' => EstadoPago::Pagado->value]);
+            DB::table('reserva')->where('id', $pago->reserva_id)->update(['estado' => EstadoReserva::Confirmada->value]);
+            HistorialReserva::registrar($pago->reserva, EstadoReserva::ProcesandoPago->value, EstadoReserva::Confirmada->value, 'Confirmada por la otra petición.');
+        });
+    }
+
+    public function test_aprobar_pago_ya_aprobado_no_confirma_dos_veces(): void
+    {
+        $pago = $this->reservaConPago();
+        $obsoleto = Pago::findOrFail($pago->id);
+        $this->simularAprobacionConcurrente($pago);
+
+        app(PagoService::class)->aprobar($obsoleto);
+
+        $this->assertSame(1, HistorialReserva::where('reserva_id', $pago->reserva_id)
+            ->where('estado_nuevo', EstadoReserva::Confirmada->value)->count());
+        $this->assertSame(0, Notificacion::where('titulo', 'Reserva confirmada')->count());
+        $this->assertSame(0, Notificacion::where('titulo', 'Nuevo ingreso registrado')->count());
+    }
+
+    public function test_rechazar_pago_ya_revisado_no_registra_un_segundo_cambio(): void
+    {
+        $pago = $this->reservaConPago();
+        $obsoleto = Pago::findOrFail($pago->id);
+        $this->simularAprobacionConcurrente($pago);
+
+        app(PagoService::class)->rechazar($obsoleto, null, 'Motivo tardío');
+
+        $this->assertSame(EstadoPago::Pagado, $pago->refresh()->estado);
+        $this->assertSame(EstadoReserva::Confirmada, $pago->reserva->refresh()->estado);
+        $this->assertSame(0, Notificacion::where('titulo', 'Pago rechazado')->count());
     }
 }

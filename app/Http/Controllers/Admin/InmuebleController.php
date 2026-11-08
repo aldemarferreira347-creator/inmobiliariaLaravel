@@ -13,7 +13,7 @@ use Illuminate\View\View;
 /**
  * CRUD de inmuebles del panel de administración (HU-04 / HU-08).
  *
- * Modelo principal: {@see \App\Models\Inmueble}. También coordina:
+ * Modelo principal: {@see Inmueble}. También coordina:
  * - {@see ImagenInmuebleService} para guardar y eliminar las fotos del inmueble.
  * - La relación Inmueble::reservas() (vía tieneReservasActivas()) para impedir
  *   borrar inmuebles con reservas vigentes.
@@ -93,10 +93,8 @@ class InmuebleController extends Controller
 
         $titulo = $inmueble->titulo;
 
-        DB::transaction(function () use ($inmueble) {
-            $this->imagenes->eliminarTodas($inmueble);
-            $inmueble->delete();
-        });
+        // Imágenes, favoritos y citas los borra el evento `deleting` del modelo
+        DB::transaction(fn () => $inmueble->delete());
 
         return $this->volverAlListado("Inmueble «{$titulo}» eliminado correctamente.");
     }
