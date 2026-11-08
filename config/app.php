@@ -69,6 +69,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tareas programadas por petición
+    |--------------------------------------------------------------------------
+    |
+    | En hosting sin cron (InfinityFree) las tareas periódicas se ejecutan al
+    | terminar una petición web, como mucho cada 15 minutos. Ver
+    | App\Http\Middleware\EjecutarTareasPendientes.
+    |
+    */
+
+    'tareas_por_peticion' => env('TAREAS_POR_PETICION', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

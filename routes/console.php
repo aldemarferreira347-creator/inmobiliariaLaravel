@@ -10,3 +10,5 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('reservas:expirar')->hourly()->withoutOverlapping();
 Schedule::command('contratos:vencer')->hourly()->withoutOverlapping();
+// Conciliación con Stripe cuando el webhook no llega (3DS abandonado)
+Schedule::command('pagos:conciliar')->everyFifteenMinutes()->withoutOverlapping();
