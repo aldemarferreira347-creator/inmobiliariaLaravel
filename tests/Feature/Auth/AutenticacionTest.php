@@ -195,6 +195,19 @@ class AutenticacionTest extends TestCase
             ->assertSessionMissing('mensaje');
     }
 
+    public function test_hu_05_5_cuenta_desactivada_en_curso_no_deja_aviso_de_expiracion(): void
+    {
+        $usuario = User::factory()->create();
+        $usuario->update(['estado' => EstadoUsuario::Inactivo]);
+
+        $this->withCookie('sesion_iniciada', '1')
+            ->actingAs($usuario)
+            ->get(route('perfil.edit'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('mensaje', 'Su cuenta está inactiva. Contacte al administrador')
+            ->assertCookieExpired('sesion_iniciada');
+    }
+
     public function test_hu_05_5_asesor_inactivo_con_credenciales_correctas(): void
     {
         $asesor = User::factory()->asesor()->inactivo()->create();

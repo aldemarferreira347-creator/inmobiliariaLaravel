@@ -22,6 +22,12 @@ class AuthenticatedSessionController extends Controller
     /** Cookie que recuerda que hubo una sesión iniciada (ver bootstrap/app.php). */
     public const COOKIE_SESION = 'sesion_iniciada';
 
+    /** Emite la cookie que permite avisar «Su sesión ha expirado» (HU-05.4). */
+    public static function marcarSesionIniciada(): void
+    {
+        Cookie::queue(Cookie::make(self::COOKIE_SESION, '1', 60 * 24 * 30, httpOnly: true));
+    }
+
     /** Muestra el formulario de inicio de sesión. */
     public function create(): View
     {
@@ -35,7 +41,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         // HU-05.4: marca que distingue «sesión expirada» de «nunca inició sesión»
-        Cookie::queue(Cookie::make(self::COOKIE_SESION, '1', 60 * 24 * 30, httpOnly: true));
+        self::marcarSesionIniciada();
 
         return redirect()->intended(route($request->user()->rol->rutaInicio()));
     }

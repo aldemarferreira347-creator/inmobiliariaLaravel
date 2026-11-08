@@ -48,6 +48,7 @@ class RegisteredUserController extends Controller
         );
 
         Auth::login($usuario);
+        AuthenticatedSessionController::marcarSesionIniciada();
 
         return redirect()
             ->route('inicio')

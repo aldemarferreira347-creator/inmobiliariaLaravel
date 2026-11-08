@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -24,6 +26,7 @@ class EnsureUserIsActive
 
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            Cookie::queue(Cookie::forget(AuthenticatedSessionController::COOKIE_SESION));
 
             return redirect()->route('login')->with([
                 'mensaje' => 'Su cuenta está inactiva. Contacte al administrador',

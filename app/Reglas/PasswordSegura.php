@@ -10,8 +10,7 @@ use Illuminate\Validation\Rules\Password;
 /**
  * Política de contraseñas del sistema, en un único lugar.
  *
- * Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter
- * especial. La comparten el registro, el cambio autenticado, la recuperación
+ * Mínimo 8 caracteres, con al menos una letra y un número (HU-03.3). La comparten el registro, el cambio autenticado, la recuperación
  * por enlace y el alta de usuarios del panel, para que no se desincronicen.
  * Ante cualquier incumplimiento se muestra el mismo mensaje de la HU-03.3.
  */
@@ -28,7 +27,7 @@ final class PasswordSegura implements ValidationRule
     {
         $cumple = Validator::make(
             ['contrasena' => $value],
-            ['contrasena' => [Password::min(8)->mixedCase()->numbers()->symbols()]],
+            ['contrasena' => [Password::min(8)->letters()->numbers()]],
         )->passes();
 
         if (! $cumple) {

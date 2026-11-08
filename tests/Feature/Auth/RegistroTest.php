@@ -100,6 +100,26 @@ class RegistroTest extends TestCase
         }
     }
 
+    public function test_hu_03_3_regla_literal_letras_y_numeros_minimo_8(): void
+    {
+        $this->post(route('register'), $this->datosValidos([
+            'contrasena' => 'abcd1234',
+            'contrasena_confirmation' => 'abcd1234',
+        ]))->assertSessionHasNoErrors();
+        $this->post(route('logout'));
+
+        foreach (['abcdefgh', '12345678', 'abc1'] as $invalida) {
+            $this->post(route('register'), $this->datosValidos([
+                'email' => $invalida.'@ejemplo.test',
+                'documento_numero' => '9'.crc32($invalida),
+                'contrasena' => $invalida,
+                'contrasena_confirmation' => $invalida,
+            ]))->assertSessionHasErrors([
+                'contrasena' => 'La contraseña debe tener mínimo 8 caracteres e incluir números y letras',
+            ]);
+        }
+    }
+
     public function test_hu_03_4_se_envia_correo_de_bienvenida_al_registrarse(): void
     {
         Mail::fake();
