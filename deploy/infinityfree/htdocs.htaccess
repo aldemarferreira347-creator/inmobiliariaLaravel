@@ -9,4 +9,6 @@ RewriteRule ^(app|bootstrap|config|database|lang|resources|routes|storage/(app/p
 RewriteRule ^storage/(.*)$ /storage/app/public/$1 [END]
 
 # Todo lo demás al front controller de Laravel
+# Evita el bucle de reescritura cuando la ruta ya apunta a /public/
+RewriteCond %{REQUEST_URI} !^/public/
 RewriteRule (.*) /public/$1 [L]

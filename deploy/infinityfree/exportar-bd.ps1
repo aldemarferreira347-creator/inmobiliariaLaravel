@@ -28,13 +28,18 @@ function Verificar-Salida([string]$paso) {
 Write-Host 'PHP en uso:'; php -v | Select-Object -First 1
 New-Item -ItemType Directory -Path $build -Force | Out-Null
 
-# Contraseña inicial aleatoria del administrador (solo se escribe en CREDENCIALES.txt)
+# Contraseñas iniciales aleatorias (solo se escriben en CREDENCIALES.txt)
 $mayus = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; $minus = 'abcdefghijkmnopqrstuvwxyz'; $digitos = '23456789'
 $todo = $mayus + $minus + $digitos
 $rng = [System.Security.Cryptography.RandomNumberGenerator]
 $elegir = { param($c) $c[$rng::GetInt32($c.Length)] }
-$chars = @((& $elegir $mayus), (& $elegir $minus), (& $elegir $digitos)) + (1..13 | ForEach-Object { & $elegir $todo })
-$contrasenaAdmin = -join ($chars | Sort-Object { $rng::GetInt32(1000000) })
+function Nueva-Contrasena {
+    $chars = @((& $elegir $mayus), (& $elegir $minus), (& $elegir $digitos)) + (1..13 | ForEach-Object { & $elegir $todo })
+    -join ($chars | Sort-Object { $rng::GetInt32(1000000) })
+}
+$contrasenaAdmin = Nueva-Contrasena
+$contrasenaAsesor = Nueva-Contrasena
+$contrasenaCliente = Nueva-Contrasena
 
 # 1. BD vacía con utf8mb4_unicode_ci (solo la de exportación)
 $argsConexion = @("-h$Servidor", "-P$Puerto", "-u$Usuario")
@@ -51,6 +56,8 @@ $variables = @{
     SESSION_DRIVER = 'array'; CACHE_STORE = 'array'; QUEUE_CONNECTION = 'sync'
     MAIL_MAILER = 'log'; TAREAS_POR_PETICION = 'false'
     ADMIN_PASSWORD_INICIAL = $contrasenaAdmin
+    ASESOR_PASSWORD_INICIAL = $contrasenaAsesor
+    CLIENTE_PASSWORD_INICIAL = $contrasenaCliente
 }
 $anteriores = @{}
 foreach ($k in $variables.Keys) {
@@ -86,6 +93,8 @@ $sql = [IO.File]::ReadAllText($parteDatos, $utf8) + "`n" + [IO.File]::ReadAllTex
 Remove-Item $parteDatos, $parteVacias -Force
 $sql = $sql -replace 'utf8mb4_0900_ai_ci', 'utf8mb4_unicode_ci'
 $sql = $sql -replace '/\*!\d+\s+DEFINER=[^*]*\*/', ''
+# Sin ENGINE: se aplica el motor por defecto del servidor (InnoDB o MyISAM)
+$sql = $sql -replace ' ENGINE=\w+', ''
 $sql = $sql -replace 'DEFINER=`[^`]*`@`[^`]*`\s*', ''
 $sql = $sql -replace '(?m)^(CREATE DATABASE|USE )[^\r\n]*\r?\n', ''
 [IO.File]::WriteAllText($salida, $sql, $utf8)
@@ -93,18 +102,21 @@ $sql = $sql -replace '(?m)^(CREATE DATABASE|USE )[^\r\n]*\r?\n', ''
 # 5. Verificaciones que abortan
 $tam = (Get-Item $salida).Length
 if ($tam -gt 8MB) { throw "bd.sql pesa $([math]::Round($tam / 1MB, 1)) MB (máximo 8 MB)" }
-$prohibidos = '0900_ai_ci', 'DEFINER', 'TRIGGER', 'CREATE VIEW', 'PROCEDURE'
+$prohibidos = '0900_ai_ci', 'DEFINER', 'TRIGGER', 'CREATE VIEW', 'PROCEDURE', 'ENGINE='
 foreach ($p in $prohibidos) {
     if (Select-String -Path $salida -Pattern $p -SimpleMatch -Quiet) { throw "bd.sql contiene '$p'" }
 }
 if (-not (Select-String -Path $salida -Pattern 'CREATE TABLE `usuario`' -SimpleMatch -Quiet)) { throw 'bd.sql no contiene la tabla usuario' }
 
-# 6. Credenciales iniciales (archivo ignorado por git; no se imprime la contraseña)
-$admin = 'admin@inmobiliaria.test'
+# 6. Credenciales iniciales (archivo ignorado por git; no se imprimen las contraseñas)
 Set-Content -Path $credenciales -Encoding utf8 -Value @(
-    'Credenciales iniciales del administrador (no versionar, borrar tras el primer ingreso)',
-    "Correo: $admin",
-    "Contraseña: $contrasenaAdmin"
+    'Credenciales iniciales (no versionar, borrar tras el primer ingreso)',
+    'Administrador: admin@inmobiliaria.test',
+    "Contraseña: $contrasenaAdmin",
+    'Asesor demo: asesor@inmobiliaria.test',
+    "Contraseña: $contrasenaAsesor",
+    'Cliente demo: cliente@inmobiliaria.test',
+    "Contraseña: $contrasenaCliente"
 )
 
 Write-Host "bd.sql generado: $salida ($([math]::Round($tam / 1KB)) KB)"

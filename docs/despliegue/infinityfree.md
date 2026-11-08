@@ -83,3 +83,7 @@ No hay artisan en el servidor. Para un cambio de esquema:
 4. Insertar la fila correspondiente en la tabla `migrations` para mantener el registro coherente con el repositorio.
 
 No volver a importar `bd.sql` completo: borraría los datos reales.
+
+### Prueba de humo local del paquete
+
+Si se sirve `build-infinityfree/htdocs` en local (p. ej. con `php -S`), la aplicación crea sesiones, vistas compiladas y logs dentro de ese directorio y necesita un `.env` temporal. Después hay que volver a ejecutar `deploy/infinityfree/empaquetar.ps1` (o hacer la prueba sobre una copia) antes de subir por FTP, para que `htdocs` quede sin residuos ni `.env`.

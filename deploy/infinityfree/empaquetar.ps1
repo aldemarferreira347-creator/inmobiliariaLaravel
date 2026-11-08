@@ -33,6 +33,7 @@ $dirsExcluidos = @(
 $dirsExcluidos += @(
     (Join-Path $raiz 'storage\logs'),
     (Join-Path $raiz 'storage\framework'),
+    (Join-Path $raiz 'storage\app\public\chat'),
     (Join-Path $raiz 'public\storage')
 )
 $archivosExcluidos = @(
@@ -81,6 +82,13 @@ if ($entradas -gt 25000) { $errores += "Demasiadas entradas: $entradas (máximo 
 if (-not (Test-Path (Join-Path $htdocs 'public\build\manifest.json'))) { $errores += 'Falta public/build/manifest.json' }
 if (Test-Path (Join-Path $htdocs '.env')) { $errores += 'El paquete contiene un .env' }
 if ($errores) { throw ("Verificación fallida:`n" + ($errores -join "`n")) }
+
+# 7b. Limpieza final de residuos de ejecución (sesiones, vistas, caché, logs); se conservan los .gitignore
+foreach ($d in @('storage\framework\sessions', 'storage\framework\views', 'storage\framework\cache\data', 'storage\logs')) {
+    Get-ChildItem (Join-Path $htdocs $d) -Force -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { -not $_.PSIsContainer -and $_.Name -ne '.gitignore' } | Remove-Item -Force
+}
+Get-ChildItem (Join-Path $htdocs 'bootstrap\cache') -Filter '*.php' -ErrorAction SilentlyContinue | Remove-Item -Force
 
 # 8. Resumen y zip
 $archivos = @(Get-ChildItem $htdocs -Recurse -File -Force).Count
