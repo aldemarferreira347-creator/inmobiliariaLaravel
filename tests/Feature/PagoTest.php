@@ -17,11 +17,15 @@ use App\Models\User;
 use App\Models\WebhookEvento;
 use App\Servicios\PagoService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Stripe\ApiRequestor;
+use Stripe\Exception\ApiConnectionException;
 use Stripe\HttpClient\ClientInterface;
+use Tests\Soporte\StripeSimulado;
 use Tests\TestCase;
 
 class PagoTest extends TestCase
@@ -332,5 +336,212 @@ class PagoTest extends TestCase
             ComprobantePago::class,
             fn (ComprobantePago $correo) => $correo->hasTo($reserva->cliente->email),
         );
+    }
+
+    /** @return array{0: Reserva, 1: MetodoPagoGuardado} */
+    private function reservaConTarjetaGuardada(string $token = 'pm_test_1'): array
+    {
+        $reserva = Reserva::factory()->create(['inmueble_id' => Inmueble::factory()->deArriendo()->create()->id]);
+        $tarjeta = MetodoPagoGuardado::create([
+            'cliente_id' => $reserva->cliente->id,
+            'token_pasarela' => $token,
+            'cliente_pasarela_id' => 'cus_test_1',
+            'marca' => 'Visa',
+            'ultimos_4' => '4242',
+        ]);
+
+        return [$reserva, $tarjeta];
+    }
+
+    private function pagarConTarjeta(Reserva $reserva, MetodoPagoGuardado $tarjeta)
+    {
+        return $this->actingAs($reserva->cliente)->post(route('reservas.pagar-con-tarjeta', [$reserva, $tarjeta]));
+    }
+
+    private function assertReservaSinConfirmar(Reserva $reserva): void
+    {
+        $this->assertSame(EstadoReserva::PendientePago, $reserva->refresh()->estado);
+        $this->assertSame(EstadoInmueble::Disponible, $reserva->inmueble->refresh()->estado);
+    }
+
+    // HU-23.2: la entidad rechaza la tarjeta
+    public function test_hu_23_2_pago_rechazado_por_el_banco(): void
+    {
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        StripeSimulado::instalar(fn () => StripeSimulado::errorDeTarjeta('card_declined', 'Your card was declined.'));
+
+        try {
+            $this->pagarConTarjeta($reserva, $tarjeta)
+                ->assertRedirect(route('reservas.show', $reserva))
+                ->assertSessionHas('mensaje', 'Pago rechazado. Intente con otro método de pago')
+                ->assertSessionHas('tipo', 'error');
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $this->assertReservaSinConfirmar($reserva);
+        $this->assertSame(EstadoPago::Rechazado, $reserva->pagos()->firstOrFail()->estado);
+    }
+
+    // HU-23.3: sin conexión con la pasarela se ofrece «Reintentar pago» y la reserva no cambia
+    public function test_hu_23_3_error_de_conexion_ofrece_reintentar(): void
+    {
+        Exceptions::fake();
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        StripeSimulado::instalar(fn () => throw new ApiConnectionException('cURL error 6: no se pudo resolver el host'));
+
+        try {
+            $this->pagarConTarjeta($reserva, $tarjeta)
+                ->assertRedirect(route('reservas.show', $reserva))
+                ->assertSessionHas('tipo', 'error')
+                ->assertSessionHas('reintentar_tarjeta', $tarjeta->id);
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $this->assertReservaSinConfirmar($reserva);
+        Exceptions::assertReported(ApiConnectionException::class);
+
+        // Al volver a la reserva aparece el botón y no se filtra el detalle técnico
+        $this->followingRedirects()
+            ->actingAs($reserva->cliente)
+            ->withSession(['reintentar_tarjeta' => $tarjeta->id, 'mensaje' => 'No pudimos comunicarnos con la pasarela de pago. Intente nuevamente.', 'tipo' => 'error'])
+            ->get(route('reservas.show', $reserva))
+            ->assertSee('Reintentar pago')
+            ->assertDontSee('cURL error');
+    }
+
+    // HU-23.4: datos de tarjeta inválidos no generan ningún pago
+    public function test_hu_23_4_datos_de_tarjeta_invalidos(): void
+    {
+        foreach (['incorrect_number', 'invalid_expiry_month', 'invalid_expiry_year', 'invalid_cvc', 'incorrect_cvc'] as $codigo) {
+            [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada("pm_{$codigo}");
+            StripeSimulado::instalar(fn () => StripeSimulado::errorDeTarjeta($codigo));
+
+            try {
+                $this->pagarConTarjeta($reserva, $tarjeta)
+                    ->assertSessionHas('mensaje', 'Datos inválidos. Verifique la información de su tarjeta')
+                    ->assertSessionHas('tipo', 'error');
+            } finally {
+                StripeSimulado::desinstalar();
+            }
+
+            $this->assertReservaSinConfirmar($reserva);
+        }
+
+        $this->assertSame(0, Pago::count());
+    }
+
+    // HU-23.5: una falla interna no filtra detalles, ofrece reintentar y deja la reserva pendiente
+    public function test_hu_23_5_error_interno_al_procesar_el_pago(): void
+    {
+        Exceptions::fake();
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        StripeSimulado::instalar(fn () => throw new RuntimeException('SQLSTATE secreto interno'));
+
+        try {
+            $this->pagarConTarjeta($reserva, $tarjeta)
+                ->assertRedirect(route('reservas.show', $reserva))
+                ->assertSessionHas('tipo', 'error')
+                ->assertSessionHas('reintentar_tarjeta', $tarjeta->id)
+                ->assertSessionMissing('errors');
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $this->assertStringNotContainsString('SQLSTATE', (string) session('mensaje'));
+        $this->assertReservaSinConfirmar($reserva);
+        Exceptions::assertReported(RuntimeException::class);
+        $this->assertSame(0, Notificacion::where('mensaje', 'like', '%SQLSTATE%')->count());
+        $this->assertSame(0, HistorialReserva::where('comentario', 'like', '%SQLSTATE%')->count());
+    }
+
+    // HU-20.1: solo se guardan token, últimos 4 y marca; ninguna columna admite el número completo
+    public function test_hu_20_1_guardar_tarjeta_solo_token_ultimos4_y_marca(): void
+    {
+        $cliente = User::factory()->create();
+
+        StripeSimulado::instalar(fn () => StripeSimulado::ok([
+            'id' => 'pm_test_nueva', 'object' => 'payment_method', 'customer' => 'cus_test_1',
+            'billing_details' => ['name' => 'Titular Prueba'],
+            'card' => ['brand' => 'visa', 'last4' => '4242', 'exp_month' => 12, 'exp_year' => 2030],
+        ]));
+
+        try {
+            $this->actingAs($cliente)
+                ->postJson(route('perfil.tarjetas.store'), ['payment_method_id' => 'pm_test_nueva', 'customer_id' => 'cus_test_1'])
+                ->assertOk();
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $tarjeta = MetodoPagoGuardado::firstOrFail();
+        $this->assertSame('pm_test_nueva', $tarjeta->token_pasarela);
+        $this->assertSame('4242', $tarjeta->ultimos_4);
+        $this->assertSame('Visa', $tarjeta->marca);
+
+        // Ningún valor guardado se parece a un número de tarjeta (13 a 19 dígitos)
+        foreach ($tarjeta->getAttributes() as $valor) {
+            $this->assertDoesNotMatchRegularExpression('/\d{13,19}/', (string) $valor);
+        }
+
+        // Ninguna columna puede alojar el PAN, el CVV ni la expiración completa
+        $columnas = collect(Schema::getColumns('metodo_pago_guardado'))->keyBy('name');
+        foreach ($columnas->keys() as $nombre) {
+            $this->assertDoesNotMatchRegularExpression('/numero|pan|cvv|cvc|card_number|tarjeta/i', $nombre);
+        }
+        $this->assertMatchesRegularExpression('/^(var)?char(\(4\))?$/i', $columnas['ultimos_4']['type']);
+        $this->assertMatchesRegularExpression('/^varchar(\(20\))?$/i', $columnas['marca']['type']);
+    }
+
+    // HU-20.2: el listado muestra marca y últimos 4
+    public function test_hu_20_2_listado_de_tarjetas_con_marca_y_ultimos_4(): void
+    {
+        [$reserva] = $this->reservaConTarjetaGuardada();
+
+        $this->actingAs($reserva->cliente)
+            ->get(route('perfil.edit'))
+            ->assertOk()
+            ->assertSee('Visa')
+            ->assertSee('4242');
+    }
+
+    // HU-20.3: eliminar una tarjeta la quita de las opciones de pago
+    public function test_hu_20_3_eliminar_tarjeta(): void
+    {
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        StripeSimulado::instalar(fn () => StripeSimulado::ok(['id' => 'pm_test_1', 'object' => 'payment_method']));
+
+        try {
+            $this->actingAs($reserva->cliente)
+                ->delete(route('perfil.tarjetas.destroy', $tarjeta))
+                ->assertRedirect(route('perfil.edit'))
+                ->assertSessionHas('mensaje', 'Tarjeta eliminada correctamente.');
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $this->assertFalse($tarjeta->refresh()->activo);
+
+        $this->actingAs($reserva->cliente)->get(route('reservas.show', $reserva))->assertDontSee('4242');
+    }
+
+    // HU-20.4: pagar con la tarjeta guardada no pide ni envía datos de tarjeta
+    public function test_hu_20_4_pago_con_tarjeta_guardada_sin_pedir_datos(): void
+    {
+        Mail::fake();
+        [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
+        $stripe = StripeSimulado::instalar(fn () => StripeSimulado::ok(['id' => 'pi_test_guardada', 'object' => 'payment_intent', 'status' => 'succeeded']));
+
+        try {
+            $this->pagarConTarjeta($reserva, $tarjeta)->assertSessionHas('tipo', 'success');
+        } finally {
+            StripeSimulado::desinstalar();
+        }
+
+        $this->assertCount(1, $stripe->peticiones);
+        $this->assertSame('pm_test_1', $stripe->peticiones[0]['params']['payment_method']);
+        $this->assertArrayNotHasKey('card', $stripe->peticiones[0]['params']);
+        $this->assertSame(EstadoReserva::Confirmada, $reserva->refresh()->estado);
     }
 }

@@ -113,6 +113,16 @@
                                         Paga {{ $reserva->monto_formateado }} al instante, sin volver a ingresar tus datos.
                                     </p>
 
+                                    {{-- HU-23.3 / 23.5: tras una falla de conexión o interna se reintenta con la misma tarjeta --}}
+                                    @if (($reintentar = $tarjetas->firstWhere('id', session('reintentar_tarjeta'))))
+                                        <form method="POST" action="{{ route('reservas.pagar-con-tarjeta', [$reserva, $reintentar]) }}">
+                                            @csrf
+                                            <button type="submit" class="btn-panel-primary">
+                                                <x-icon name="refresh-cw" class="h-4 w-4" /> Reintentar pago
+                                            </button>
+                                        </form>
+                                    @endif
+
                                     <div class="tarjetas-pago-list">
                                         @foreach ($tarjetas as $tarjeta)
                                             <form method="POST"

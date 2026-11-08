@@ -104,6 +104,20 @@ class ReservaController extends Controller
             ->route('reservas.show', $reserva)
             ->with(match ($resultado['estado']) {
                 'succeeded' => ['mensaje' => "Pago aprobado. La reserva {$reserva->codigo_reserva} quedó confirmada.", 'tipo' => 'success'],
+                // HU-23.2 / 23.4: sin botón de reintento; se pide otro medio de pago o corregir los datos
+                'rechazado' => ['mensaje' => 'Pago rechazado. Intente con otro método de pago', 'tipo' => 'error'],
+                'datos_invalidos' => ['mensaje' => 'Datos inválidos. Verifique la información de su tarjeta', 'tipo' => 'error'],
+                // HU-23.3 / 23.5: la reserva sigue pendiente y se ofrece «Reintentar pago» con la misma tarjeta
+                'error_conexion' => [
+                    'mensaje' => 'No pudimos comunicarnos con la pasarela de pago. Intente nuevamente',
+                    'tipo' => 'error',
+                    'reintentar_tarjeta' => $tarjeta->id,
+                ],
+                'error' => [
+                    'mensaje' => 'Ocurrió un error al procesar el pago. Intente nuevamente',
+                    'tipo' => 'error',
+                    'reintentar_tarjeta' => $tarjeta->id,
+                ],
                 default => ['mensaje' => 'Tu banco requiere una verificación adicional: complétala en el recuadro «Verificación del banco pendiente».', 'tipo' => 'info'],
             });
     }

@@ -11,10 +11,12 @@ use App\Models\Reserva;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
+use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\CardException;
 use Stripe\PaymentIntent;
 use Stripe\StripeClient;
+use Throwable;
 
 /**
  * Tarjetas guardadas y pago con tarjeta (HU-20 / HU-23.1).
@@ -26,6 +28,16 @@ use Stripe\StripeClient;
  */
 class StripeCardService
 {
+    /** Códigos de Stripe que indican datos de tarjeta mal escritos (HU-23.4) */
+    private const CODIGOS_DATOS_INVALIDOS = [
+        'incorrect_number',
+        'invalid_number',
+        'invalid_expiry_month',
+        'invalid_expiry_year',
+        'invalid_cvc',
+        'incorrect_cvc',
+    ];
+
     private readonly StripeClient $stripe;
 
     public function __construct(private readonly PagoService $pagos)
@@ -118,6 +130,8 @@ class StripeCardService
      * datos de nuevo. Si Stripe exige autenticación adicional (3DS), el pago
      * queda «Procesando» y el webhook lo confirma cuando el cliente la supere.
      *
+     * `estado`: succeeded, requires_action, rechazado, datos_invalidos, error_conexion o error.
+     *
      * @return array{estado: string, client_secret?: string}
      *
      * @throws ValidationException
@@ -146,11 +160,29 @@ class StripeCardService
                 'metadata' => ['reserva_id' => (string) $reserva->id, 'pago_id' => (string) $pago->id],
             ], ['idempotency_key' => "pago-{$pago->id}"]);
         } catch (CardException $e) {
+            // HU-23.4: datos mal escritos no son un rechazo del banco ni llegan a cobrarse
+            if (in_array($e->getStripeCode(), self::CODIGOS_DATOS_INVALIDOS, true)) {
+                $this->pagos->descartar($pago, 'Datos de tarjeta inválidos: no se realizó ningún cobro.');
+
+                return ['estado' => 'datos_invalidos'];
+            }
+
+            // HU-23.2: rechazo de la entidad bancaria
             $this->pagos->rechazar($pago, null, $e->getError()->message ?? 'Tarjeta rechazada.');
-            throw ValidationException::withMessages(['tarjeta' => 'Pago rechazado. Intenta con otro método de pago.']);
-        } catch (ApiErrorException $e) {
-            $this->pagos->rechazar($pago, null, $e->getMessage());
-            throw ValidationException::withMessages(['tarjeta' => 'No se pudo procesar el pago con Stripe: '.$e->getMessage()]);
+
+            return ['estado' => 'rechazado'];
+        } catch (ApiConnectionException $e) {
+            // HU-23.3: sin comunicación con la pasarela; el detalle técnico solo va al registro
+            report($e);
+            $this->pagos->rechazar($pago, null, 'No hubo comunicación con la pasarela de pago.');
+
+            return ['estado' => 'error_conexion'];
+        } catch (Throwable $e) {
+            // HU-23.5: cualquier otra falla
+            report($e);
+            $this->pagos->rechazar($pago, null, 'Error interno al procesar el pago.');
+
+            return ['estado' => 'error'];
         }
 
         $pago->update(['referencia_pasarela' => $intent->id]);
@@ -166,7 +198,8 @@ class StripeCardService
         }
 
         $this->pagos->rechazar($pago, null, "El pago no pudo completarse (estado: {$intent->status}).");
-        throw ValidationException::withMessages(['tarjeta' => 'El pago no pudo completarse. Intenta nuevamente.']);
+
+        return ['estado' => 'error'];
     }
 
     /**

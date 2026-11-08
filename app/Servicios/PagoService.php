@@ -92,6 +92,39 @@ class PagoService
     }
 
     /**
+     * Anula un intento que nunca llegó a cobrarse (datos de tarjeta inválidos,
+     * HU-23.4): el pago se borra y la reserva vuelve a «Pendiente de pago».
+     */
+    public function descartar(Pago $pago, string $motivo): void
+    {
+        DB::transaction(function () use ($pago, $motivo) {
+            $reserva = $pago->reserva->releerBloqueado();
+
+            // Compare-and-swap: solo vuelve si seguía esperando este pago
+            $cambiadas = Reserva::whereKey($reserva->id)
+                ->where('estado', EstadoReserva::ProcesandoPago->value)
+                ->update(['estado' => EstadoReserva::PendientePago->value]);
+
+            Pago::whereKey($pago->id)->whereIn('estado', [EstadoPago::Pendiente->value, EstadoPago::Procesando->value])->delete();
+
+            if ($cambiadas === 0) {
+                return;
+            }
+
+            $reserva->refresh();
+
+            HistorialReserva::registrar(
+                $reserva,
+                EstadoReserva::ProcesandoPago->value,
+                EstadoReserva::PendientePago->value,
+                $motivo,
+                $reserva->usuario_id,
+                request()?->ip(),
+            );
+        });
+    }
+
+    /**
      * Aprueba el pago y confirma la reserva (HU-23.1).
      *
      * Un `$revisor` nulo identifica una confirmación automática de la
