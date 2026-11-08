@@ -1,11 +1,22 @@
 Options -Indexes
 RewriteEngine On
 
+# Validación del certificado SSL gratuito: /.well-known/ queda fuera de la
+# redirección y de la regla que bloquea archivos ocultos
+RewriteRule ^\.well-known/ - [L]
+
+# Todo el tráfico por HTTPS (InfinityFree puede terminar TLS en un proxy que
+# envía X-Forwarded-Proto)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
 # Nunca servir archivos ocultos ni directorios internos
 RewriteRule (^|/)\. - [F,L]
 RewriteRule ^(app|bootstrap|config|database|lang|resources|routes|storage/(app/private|framework|logs)|vendor)(/|$) - [F,L]
 
-# Archivos públicos subidos (sustituye a storage:link)
+# Archivos públicos subidos (sustituye a storage:link); nunca se ejecuta PHP subido
+RewriteRule ^storage/.*\.(php\d?|phtml|phar)$ - [F,L,NC]
 RewriteRule ^storage/(.*)$ /storage/app/public/$1 [END]
 
 # Todo lo demás al front controller de Laravel

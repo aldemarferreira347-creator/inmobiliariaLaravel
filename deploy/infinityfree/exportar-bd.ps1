@@ -21,6 +21,12 @@ foreach ($exe in @($mysql, $mysqldump)) {
 }
 if ($BaseExport -ne 'inmobiliaria_export') { throw 'Por seguridad solo se admite la base inmobiliaria_export' }
 
+# Con la configuración en caché Laravel ignora las variables de entorno de abajo y
+# migrate:fresh se ejecutaría contra la BD de desarrollo: se aborta antes de tocar nada.
+if (Test-Path (Join-Path $raiz 'bootstrap\cache\config.php')) {
+    throw 'Existe bootstrap\cache\config.php: ejecute php artisan config:clear y vuelva a intentarlo'
+}
+
 function Verificar-Salida([string]$paso) {
     if ($LASTEXITCODE -ne 0) { throw "Falló: $paso (código $LASTEXITCODE)" }
 }

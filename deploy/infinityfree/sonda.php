@@ -1,12 +1,14 @@
 <?php
+
 /**
  * Sonda del servidor (InfinityFree). PHP plano: sin Laravel ni Composer.
  *
- * Uso: editar las constantes, subir a htdocs/sonda.php, abrir
- * https://<dominio>/sonda.php?clave=<CLAVE>, copiar el resultado y BORRAR el archivo.
+ * Uso: editar las constantes, subir a htdocs/sonda.php ANTES de subir la aplicación
+ * (con la aplicación ya subida, a htdocs/public/sonda.php: el .htaccess de la raíz
+ * reenvía todo a /public), abrir https://<dominio>/sonda.php?clave=<CLAVE>, copiar
+ * el resultado y BORRAR el archivo.
  * Las credenciales de MySQL son las del panel (no se lee ningun .env).
  */
-
 const CLAVE = 'CAMBIAR_CLAVE';
 const DB_HOST = 'sqlXXX.infinityfree.com';
 const DB_NAME = 'if0_XXXXXXXX_nombre';
@@ -49,6 +51,13 @@ comprobar('php', function () {
     linea('php_version', PHP_VERSION);
     linea('php_int_size', PHP_INT_SIZE);
     linea('php_sapi', php_sapi_name());
+});
+
+seccion('HTTPS entrante');
+comprobar('https', function () {
+    // Si HTTPS no llega como «on», la redirección del .htaccess depende de X-Forwarded-Proto
+    linea('server_https', $_SERVER['HTTPS'] ?? '(no definido)');
+    linea('http_x_forwarded_proto', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '(no definido)');
 });
 
 seccion('Extensiones');
