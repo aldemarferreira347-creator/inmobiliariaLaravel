@@ -32,6 +32,9 @@
                                     <strong>{{ $otro->nombre }}</strong>
                                     <span class="chat-time">{{ $hilo->ultimo_mensaje_en?->format('d/m') }}</span>
                                 </div>
+                                @if ($hilo->inmueble)
+                                    <span class="chat-item-preview font-medium">{{ $hilo->inmueble->titulo }}</span>
+                                @endif
                                 <span class="chat-item-preview">
                                     {{ $hilo->ultimoMensaje?->resumen ?? 'Sin mensajes todavía' }}
                                 </span>

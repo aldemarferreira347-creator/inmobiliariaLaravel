@@ -210,4 +210,66 @@ class MensajeTest extends TestCase
             ->getJson(route('mensajes.sin-leer'))
             ->assertJsonPath('mensajes', 0);
     }
+
+    public function test_hu_13_1_bandeja_del_asesor_muestra_cliente_inmueble_y_fecha(): void
+    {
+        $conversacion = $this->hilo();
+        $this->actingAs($conversacion->cliente)
+            ->post(route('mensajes.store', $conversacion), ['contenido' => 'Hola, sigue disponible?']);
+
+        $this->actingAs($conversacion->asesor)
+            ->get(route('mensajes.index'))
+            ->assertOk()
+            ->assertSee($conversacion->cliente->nombre)
+            ->assertSee($conversacion->inmueble->titulo)
+            ->assertSee($conversacion->fresh()->ultimo_mensaje_en->format('d/m'))
+            ->assertSee('chat-unread-badge', false);
+    }
+
+    public function test_hu_13_2_responder_crea_el_mensaje_y_notifica_al_cliente(): void
+    {
+        $conversacion = $this->hilo();
+
+        $this->actingAs($conversacion->asesor)
+            ->post(route('mensajes.store', $conversacion), ['contenido' => 'Si, sigue disponible.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('mensaje', [
+            'conversacion_id' => $conversacion->id,
+            'emisor_id' => $conversacion->asesor_id,
+            'contenido' => 'Si, sigue disponible.',
+        ]);
+        $this->assertDatabaseHas('notificacion', [
+            'usuario_id' => $conversacion->cliente_id,
+            'referencia_tipo' => 'conversacion',
+            'referencia_id' => $conversacion->id,
+        ]);
+    }
+
+    public function test_hu_13_3_ver_el_hilo_fija_leido_en_y_deja_de_ser_pendiente(): void
+    {
+        $conversacion = $this->hilo();
+        $this->actingAs($conversacion->cliente)
+            ->post(route('mensajes.store', $conversacion), ['contenido' => 'Hola']);
+
+        $this->assertNull(Mensaje::firstOrFail()->leido_en);
+
+        $this->actingAs($conversacion->asesor)->get(route('mensajes.show', $conversacion))->assertOk();
+
+        $this->assertNotNull(Mensaje::firstOrFail()->leido_en);
+        $this->assertSame(0, $conversacion->mensajesSinLeerPara($conversacion->asesor));
+    }
+
+    public function test_hu_13_4_el_hilo_se_muestra_en_orden_cronologico_ascendente(): void
+    {
+        $conversacion = $this->hilo();
+        foreach (['Primero', 'Segundo', 'Tercero'] as $texto) {
+            $this->actingAs($conversacion->cliente)
+                ->post(route('mensajes.store', $conversacion), ['contenido' => $texto]);
+        }
+
+        $this->actingAs($conversacion->asesor)
+            ->get(route('mensajes.show', $conversacion))
+            ->assertSeeInOrder(['Primero', 'Segundo', 'Tercero']);
+    }
 }
