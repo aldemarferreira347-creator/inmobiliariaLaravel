@@ -18,6 +18,7 @@ use App\Politicas\UserPolicy;
 use App\Politicas\VentaPolicy;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // MyISAM (InfinityFree) limita las claves a 1000 bytes: 191 caracteres x 4 bytes de utf8mb4 cabe
+        Schema::defaultStringLength(191);
+
         // La paginación usa la plantilla propia del sistema, no la de Tailwind por defecto
         Paginator::defaultView('vendor.pagination.default');
         Paginator::defaultSimpleView('vendor.pagination.default');
