@@ -24,8 +24,15 @@ class EsquemaCompatibleTest extends TestCase
     public function test_ningun_indice_supera_1000_bytes_en_utf8mb4(): void
     {
         $excedidos = [];
+        $indices = $this->indicesDelEsquema();
 
-        foreach ($this->indicesDelEsquema() as [$tabla, $indice, $columnas, $tipos]) {
+        // Si el análisis del SQL dejara de reconocer las sentencias, la prueba no debe pasar en vacío
+        $this->assertGreaterThanOrEqual(15, count($indices), 'Se reconocieron muy pocos índices en las migraciones');
+        $claveSesiones = collect($indices)->first(fn ($i) => $i[0] === 'sessions' && $i[1] === 'primary');
+        $this->assertNotNull($claveSesiones, 'No se reconoció la clave primaria de sessions');
+        $this->assertMatchesRegularExpression('/^varchar\(\d+\)$/', $claveSesiones[3]['sessions']['id'] ?? '', 'No se reconoció el tipo de sessions.id');
+
+        foreach ($indices as [$tabla, $indice, $columnas, $tipos]) {
             $bytes = 0;
             foreach ($columnas as $columna) {
                 $bytes += $this->bytesDeTipo($tipos[$tabla][$columna] ?? 'bigint');

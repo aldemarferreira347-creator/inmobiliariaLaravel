@@ -152,12 +152,33 @@ class ExportadorExcel
         return chr(64 + $indice);
     }
 
+    // Punto de extensión para las pruebas del fallo al guardar (HU-06.3)
+    protected function escritor(Spreadsheet $libro): Xlsx
+    {
+        return new Xlsx($libro);
+    }
+
     private function responder(Spreadsheet $libro, Reporte $reporte): StreamedResponse
     {
         $nombre = "reporte_{$reporte->tipo()->value}_".now()->format('Y-m-d_H-i').'.xlsx';
 
-        return response()->streamDownload(function () use ($libro) {
-            (new Xlsx($libro))->save('php://output');
+        // El archivo se genera aquí, dentro del try del controlador: si save() falla
+        // se muestra la pantalla de error con «Intentar nuevamente» (HU-06.3) en vez
+        // de cortar una descarga ya empezada. php://temp pasa a disco por encima de 2 MB.
+        $archivo = fopen('php://temp', 'w+b');
+
+        try {
+            $this->escritor($libro)->save($archivo);
+        } finally {
+            // Libera las celdas antes de enviar el archivo
+            $libro->disconnectWorksheets();
+        }
+
+        rewind($archivo);
+
+        return response()->streamDownload(function () use ($archivo) {
+            fpassthru($archivo);
+            fclose($archivo);
         }, $nombre, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);

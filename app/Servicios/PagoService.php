@@ -222,9 +222,13 @@ class PagoService
      * Rechaza el pago. La reserva vuelve a «Pendiente de pago» para que el
      * cliente pueda reintentarlo dentro del plazo (HU-23.2).
      *
+     * Con `$resultadoIncierto` (caída de la conexión o error interno al cobrar,
+     * HU-23.3 / HU-23.5) Stripe pudo haber cobrado: el aviso al cliente es neutro
+     * y no se le envía correo de «Pago rechazado».
+     *
      * @throws ValidationException
      */
-    public function rechazar(Pago $pago, ?User $revisor, string $motivo): void
+    public function rechazar(Pago $pago, ?User $revisor, string $motivo, bool $resultadoIncierto = false): void
     {
         $aplicado = DB::transaction(function () use ($pago, $revisor, $motivo) {
             $this->bloquearParaRevision($pago);
@@ -268,6 +272,19 @@ class PagoService
         });
 
         if (! $aplicado) {
+            return;
+        }
+
+        if ($resultadoIncierto) {
+            $this->notificaciones->paraUsuario(
+                $pago->reserva->cliente,
+                'No pudimos confirmar tu pago',
+                "No pudimos confirmar tu pago de la reserva {$pago->reserva->codigo_reserva}. Antes de volver a intentarlo revisa si se realizó algún cobro; la inmobiliaria verificará el estado con la pasarela.",
+                TipoNotificacion::Aviso,
+                'reserva',
+                $pago->reserva_id,
+            );
+
             return;
         }
 

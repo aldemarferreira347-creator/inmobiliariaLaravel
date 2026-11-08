@@ -17,7 +17,7 @@ Route::middleware('guest')->group(function () {
     Route::post('registro', [RegisteredUserController::class, 'store'])->middleware('throttle:6,1');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:20,1');
 
     Route::get('olvide-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('olvide-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:6,1')->name('password.email');

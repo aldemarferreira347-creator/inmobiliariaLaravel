@@ -3,9 +3,12 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use FilesystemIterator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -21,6 +24,8 @@ class EjecutarTareasPendientes
     public const SEGUNDOS_ENTRE_EJECUCIONES = 900;
 
     public const TAREAS = ['reservas:expirar', 'contratos:vencer', 'pagos:conciliar'];
+
+    public const ARCHIVOS_POR_PODA = 500;
 
     public function handle(Request $peticion, Closure $siguiente): Response
     {
@@ -49,6 +54,46 @@ class EjecutarTareasPendientes
                 Artisan::call($tarea);
             } catch (Throwable $e) {
                 report($e);
+            }
+        }
+
+        try {
+            $this->podarCacheDeArchivos();
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * La caché en archivos solo borra una entrada vencida cuando alguien la lee:
+     * sin cron las claves de un solo uso (límites de intentos, reintentos) se
+     * acumularían. Revisa como mucho ARCHIVOS_POR_PODA archivos por ejecución,
+     * empezando por subcarpetas al azar para cubrirlas todas con el tiempo.
+     */
+    private function podarCacheDeArchivos(): void
+    {
+        $almacen = config('cache.default');
+        $ruta = config("cache.stores.{$almacen}.path");
+
+        if (config("cache.stores.{$almacen}.driver") !== 'file' || ! is_string($ruta) || ! is_dir($ruta)) {
+            return;
+        }
+
+        $carpetas = glob($ruta.'/*', GLOB_ONLYDIR) ?: [];
+        shuffle($carpetas);
+        $revisados = 0;
+
+        foreach ($carpetas as $carpeta) {
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($carpeta, FilesystemIterator::SKIP_DOTS)) as $archivo) {
+                if (++$revisados > self::ARCHIVOS_POR_PODA) {
+                    return;
+                }
+
+                // FileStore guarda al inicio de cada archivo la expiración (10 dígitos, Unix)
+                $expira = @file_get_contents($archivo->getPathname(), false, null, 0, 10);
+                if (is_string($expira) && ctype_digit($expira) && (int) $expira <= now()->timestamp) {
+                    @unlink($archivo->getPathname());
+                }
             }
         }
     }

@@ -19,6 +19,7 @@ use App\Politicas\VentaPolicy;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,6 +33,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // MyISAM (InfinityFree) limita las claves a 1000 bytes: 191 caracteres x 4 bytes de utf8mb4 cabe
         Schema::defaultStringLength(191);
+
+        // Tras el proxy de InfinityFree PHP puede ver HTTP aunque el visitante use HTTPS:
+        // los enlaces y formularios generados deben salir siempre con https://
+        if ($this->app->isProduction() && str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
 
         // La paginación usa la plantilla propia del sistema, no la de Tailwind por defecto
         Paginator::defaultView('vendor.pagination.default');

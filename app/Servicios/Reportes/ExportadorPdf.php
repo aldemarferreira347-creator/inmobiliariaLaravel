@@ -32,8 +32,12 @@ class ExportadorPdf
 
         $nombre = "reporte_{$reporte->tipo()->value}_".now()->format('Y-m-d_H-i').'.pdf';
 
+        // Se genera aquí, dentro del try del controlador, para que un fallo muestre HU-06.3
+        $contenido = $dompdf->output();
+        unset($dompdf);
+
         return response()->streamDownload(
-            fn () => print ($dompdf->output()),
+            fn () => print ($contenido),
             $nombre,
             ['Content-Type' => 'application/pdf'],
         );

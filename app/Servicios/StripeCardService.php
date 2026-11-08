@@ -174,7 +174,7 @@ class StripeCardService
         } catch (ApiConnectionException $e) {
             // HU-23.3: sin comunicación con la pasarela; el detalle técnico solo va al registro
             report($e);
-            $this->pagos->rechazar($pago, null, 'No hubo comunicación con la pasarela de pago.');
+            $this->pagos->rechazar($pago, null, 'No hubo comunicación con la pasarela de pago.', resultadoIncierto: true);
 
             // Stripe pudo confirmar el cobro antes de caerse la conexión: el reintento
             // con esta misma tarjeta reutiliza el intento (misma clave de idempotencia)
@@ -197,7 +197,7 @@ class StripeCardService
         } catch (Throwable $e) {
             // HU-23.5: cualquier otra falla
             report($e);
-            $this->pagos->rechazar($pago, null, 'Error interno al procesar el pago.');
+            $this->pagos->rechazar($pago, null, 'Error interno al procesar el pago.', resultadoIncierto: true);
 
             return ['estado' => 'error'];
         }

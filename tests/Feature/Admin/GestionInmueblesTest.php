@@ -359,20 +359,25 @@ class GestionInmueblesTest extends TestCase
         DB::commit();
         Schema::disableForeignKeyConstraints();
 
-        $this->actingAs($this->administrador())
-            ->delete(route('admin.inmuebles.destroy', $inmueble))
-            ->assertRedirect(route('admin.inmuebles.index'));
+        // La conexión en memoria sigue viva entre pruebas: se reactivan las claves foráneas pase lo que pase
+        try {
+            $this->actingAs($this->administrador())
+                ->delete(route('admin.inmuebles.destroy', $inmueble))
+                ->assertRedirect(route('admin.inmuebles.index'));
 
-        $this->assertDatabaseMissing('inmueble', ['id' => $inmueble->id]);
-        $this->assertDatabaseMissing('favorito', ['inmueble_id' => $inmueble->id]);
-        $this->assertDatabaseMissing('imageninmueble', ['inmueble_id' => $inmueble->id]);
-        $this->assertDatabaseMissing('cita', ['inmueble_id' => $inmueble->id]);
-        $this->assertDatabaseMissing('cita_historial', ['cita_id' => $cita->id]);
-        $this->assertDatabaseMissing('observacioncita', ['cita_id' => $cita->id]);
-        $this->assertDatabaseHas('conversacion', ['id' => $conversacion->id, 'inmueble_id' => null]);
+            $this->assertDatabaseMissing('inmueble', ['id' => $inmueble->id]);
+            $this->assertDatabaseMissing('favorito', ['inmueble_id' => $inmueble->id]);
+            $this->assertDatabaseMissing('imageninmueble', ['inmueble_id' => $inmueble->id]);
+            $this->assertDatabaseMissing('cita', ['inmueble_id' => $inmueble->id]);
+            $this->assertDatabaseMissing('cita_historial', ['cita_id' => $cita->id]);
+            $this->assertDatabaseMissing('observacioncita', ['cita_id' => $cita->id]);
+            $this->assertDatabaseHas('conversacion', ['id' => $conversacion->id, 'inmueble_id' => null]);
 
-        foreach ($rutas as $ruta) {
-            Storage::disk('public')->assertMissing($ruta);
+            foreach ($rutas as $ruta) {
+                Storage::disk('public')->assertMissing($ruta);
+            }
+        } finally {
+            Schema::enableForeignKeyConstraints();
         }
     }
 

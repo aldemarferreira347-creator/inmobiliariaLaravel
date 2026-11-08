@@ -388,6 +388,7 @@ class PagoTest extends TestCase
     public function test_hu_23_3_error_de_conexion_ofrece_reintentar(): void
     {
         Exceptions::fake();
+        Mail::fake();
         $admin = User::factory()->administrador()->create();
         [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
         StripeSimulado::instalar(fn () => throw new ApiConnectionException('cURL error 6: no se pudo resolver el host'));
@@ -408,6 +409,9 @@ class PagoTest extends TestCase
         $aviso = Notificacion::where('usuario_id', $admin->id)->where('titulo', 'Pago con tarjeta sin confirmar')->firstOrFail();
         $this->assertStringContainsString($reserva->codigo_reserva, $aviso->mensaje);
         $this->assertStringContainsString('pago-'.$reserva->pagos()->firstOrFail()->id, $aviso->mensaje);
+
+        // Stripe pudo cobrar: el cliente recibe un aviso neutro, sin «Pago rechazado» ni correo
+        $this->assertAvisoNeutroSinCorreo($reserva);
 
         // Al volver a la reserva aparece el botón y no se filtra el detalle técnico
         $this->followingRedirects()
@@ -443,6 +447,7 @@ class PagoTest extends TestCase
     public function test_hu_23_5_error_interno_al_procesar_el_pago(): void
     {
         Exceptions::fake();
+        Mail::fake();
         [$reserva, $tarjeta] = $this->reservaConTarjetaGuardada();
         StripeSimulado::instalar(fn () => throw new RuntimeException('SQLSTATE secreto interno'));
 
@@ -461,6 +466,18 @@ class PagoTest extends TestCase
         Exceptions::assertReported(RuntimeException::class);
         $this->assertSame(0, Notificacion::where('mensaje', 'like', '%SQLSTATE%')->count());
         $this->assertSame(0, HistorialReserva::where('comentario', 'like', '%SQLSTATE%')->count());
+        $this->assertAvisoNeutroSinCorreo($reserva);
+    }
+
+    // HU-23.3 / HU-23.5: el cobro pudo realizarse, así que no se afirma un rechazo
+    private function assertAvisoNeutroSinCorreo(Reserva $reserva): void
+    {
+        $aviso = Notificacion::where('usuario_id', $reserva->usuario_id)->firstOrFail();
+        $this->assertSame('No pudimos confirmar tu pago', $aviso->titulo);
+        $this->assertStringNotContainsString('rechazado', $aviso->mensaje);
+        $this->assertSame(0, Notificacion::where('titulo', 'Pago rechazado')->count());
+        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
     }
 
     // HU-20.1: solo se guardan token, últimos 4 y marca; ninguna columna admite el número completo

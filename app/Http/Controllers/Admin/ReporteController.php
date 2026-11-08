@@ -23,10 +23,14 @@ use Throwable;
  */
 class ReporteController extends Controller
 {
-    /** Filas máximas por exportación: medido, ~0,5 MB y ~17 ms por fila en PDF; Excel 2 000 filas = 87 MB */
-    public const MAX_FILAS_PDF = 200;
+    /**
+     * Filas máximas por exportación, medidas con memory_limit=128M en un proceso
+     * aparte (reporte de pagos): PDF 250 filas = 94 MB, Excel 3 000 filas = 94 MB,
+     * ambos con más del 20 % de margen (docs/despliegue/infinityfree.md).
+     */
+    public const MAX_FILAS_PDF = 250;
 
-    public const MAX_FILAS_EXCEL = 5000;
+    public const MAX_FILAS_EXCEL = 3000;
 
     public function __construct(private readonly FabricaReportes $reportes) {}
 
@@ -96,7 +100,7 @@ class ReporteController extends Controller
 
     /**
      * Exporta con tres topes: rango de fechas, número de filas y fallo al construir.
-     * Los topes salen de la medición con 2 000 filas (docs/despliegue/infinityfree.md).
+     * Los topes salen de la medición con memory_limit=128M (docs/despliegue/infinityfree.md).
      */
     private function exportar(Request $request, TipoReporte $tipo, int $maxFilas, string $formato, ExportadorExcel|ExportadorPdf $exportador): View|StreamedResponse|RedirectResponse
     {

@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Enumerados\EstadoUsuario;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use Database\Factories\UserFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -105,6 +106,18 @@ class AutenticacionTest extends TestCase
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 
+    // Tras el proxy de InfinityFree PHP puede ver HTTP: en producción con APP_URL https los enlaces salen con https
+    public function test_en_produccion_con_app_url_https_los_enlaces_usan_https(): void
+    {
+        $this->assertStringStartsWith('http://', route('login'));
+
+        $this->app['env'] = 'production';
+        config(['app.url' => 'https://inmobiliaria.example']);
+        (new AppServiceProvider($this->app))->boot();
+
+        $this->assertStringStartsWith('https://', route('login'));
+    }
+
     public function test_el_registro_esta_limitado_por_frecuencia(): void
     {
         for ($i = 0; $i < 6; $i++) {
@@ -112,6 +125,17 @@ class AutenticacionTest extends TestCase
         }
 
         $this->post(route('register'), [])->assertStatus(429);
+    }
+
+    // Además del límite por correo e IP: probar muchos correos desde una IP también se frena
+    public function test_el_inicio_de_sesion_esta_limitado_por_ip(): void
+    {
+        for ($i = 0; $i < 20; $i++) {
+            $this->post(route('login'), ['email' => "nadie{$i}@example.com", 'password' => 'incorrecta'])
+                ->assertStatus(302);
+        }
+
+        $this->post(route('login'), ['email' => 'otro@example.com', 'password' => 'incorrecta'])->assertStatus(429);
     }
 
     public function test_cambiar_la_contrasena_invalida_el_recuerdame(): void

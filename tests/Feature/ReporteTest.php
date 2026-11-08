@@ -11,13 +11,18 @@ use App\Models\Pago;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Models\Venta;
+use App\Servicios\Reportes\ExportadorExcel;
 use App\Servicios\Reportes\FabricaReportes;
 use App\Servicios\Reportes\FiltroReporte;
 use App\Servicios\Reportes\Reporte;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Tests\TestCase;
 
 class ReporteTest extends TestCase
@@ -322,42 +327,53 @@ class ReporteTest extends TestCase
         $this->app->instance(FabricaReportes::class, $fabrica);
     }
 
-    public function test_el_pdf_con_mas_de_200_filas_se_rechaza(): void
+    public function test_el_pdf_con_mas_de_250_filas_se_rechaza(): void
     {
         $origen = route('admin.reportes.show', 'pagos');
 
-        $this->fabricaDevuelve($this->reporteConFilas(201));
+        $this->fabricaDevuelve($this->reporteConFilas(251));
         $this->actingAs($this->administrador())->from($origen)
             ->get(route('admin.reportes.pdf', 'pagos'))
             ->assertRedirect($origen)
-            ->assertSessionHas('mensaje', 'El reporte tiene 201 filas y el PDF admite hasta 200. Acorte el rango o exporte a Excel.');
+            ->assertSessionHas('mensaje', 'El reporte tiene 251 filas y el PDF admite hasta 250. Acorte el rango o exporte a Excel.');
     }
 
-    public function test_el_pdf_con_200_filas_se_genera(): void
+    // En un proceso propio: el archivo se genera dentro de la petición y la suite
+    // completa ya acumula memoria (el tope se midió con memory_limit=128M)
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function test_el_pdf_con_250_filas_se_genera(): void
     {
-        $this->fabricaDevuelve($this->reporteConFilas(200));
+        $this->fabricaDevuelve($this->reporteConFilas(250));
 
         $respuesta = $this->actingAs($this->administrador())->get(route('admin.reportes.pdf', 'pagos'))->assertOk();
 
         $this->assertStringContainsString('application/pdf', $respuesta->headers->get('content-type'));
     }
 
-    public function test_el_excel_con_mas_de_5000_filas_se_rechaza(): void
+    public function test_el_excel_con_mas_de_3000_filas_se_rechaza(): void
     {
         $origen = route('admin.reportes.show', 'pagos');
 
-        $this->fabricaDevuelve($this->reporteConFilas(5001));
+        $this->fabricaDevuelve($this->reporteConFilas(3001));
         $this->actingAs($this->administrador())->from($origen)
             ->get(route('admin.reportes.excel', 'pagos'))
             ->assertRedirect($origen)
-            ->assertSessionHas('mensaje', 'El reporte tiene 5001 filas y el Excel admite hasta 5.000. Acorte el rango.');
+            ->assertSessionHas('mensaje', 'El reporte tiene 3001 filas y el Excel admite hasta 3.000. Acorte el rango.');
     }
 
-    public function test_el_excel_con_5000_filas_se_genera(): void
+    // En un proceso propio: el archivo se genera dentro de la petición y la suite
+    // completa ya acumula memoria (el tope se midió con memory_limit=128M)
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function test_el_excel_con_3000_filas_se_genera(): void
     {
-        $this->fabricaDevuelve($this->reporteConFilas(5000));
+        $this->fabricaDevuelve($this->reporteConFilas(3000));
 
-        $this->actingAs($this->administrador())->get(route('admin.reportes.excel', 'pagos'))->assertOk();
+        $respuesta = $this->actingAs($this->administrador())->get(route('admin.reportes.excel', 'pagos'))->assertOk();
+
+        // El .xlsx ya está completo antes de empezar la descarga (zip: empieza por «PK»)
+        $this->assertStringStartsWith('PK', $respuesta->streamedContent());
     }
 
     public static function rutasConFabrica(): array
@@ -378,6 +394,24 @@ class ReporteTest extends TestCase
             ->assertSee('No se pudo generar el reporte')
             ->assertSee('Intentar nuevamente');
         $this->assertStringContainsString('href="'.e($url).'"', $respuesta->getContent());
+    }
+
+    // El .xlsx se guarda antes de empezar la descarga: un fallo al escribirlo muestra 6.3
+    public function test_hu_06_3_fallo_al_guardar_el_excel_ofrece_intentar_nuevamente(): void
+    {
+        Reserva::factory()->create();
+        $this->app->instance(ExportadorExcel::class, new class extends ExportadorExcel
+        {
+            protected function escritor(Spreadsheet $libro): Xlsx
+            {
+                throw new \RuntimeException('Disco lleno');
+            }
+        });
+
+        $this->actingAs($this->administrador())->get(route('admin.reportes.excel', 'reservaciones'))
+            ->assertOk()
+            ->assertSee('No se pudo generar el reporte')
+            ->assertSee('Intentar nuevamente');
     }
 
     public function test_hu_06_3_error_en_el_indice_ofrece_intentar_nuevamente(): void

@@ -193,13 +193,15 @@ class NotificacionTest extends TestCase
 
     public function test_smtp_caido_no_interrumpe_el_pago(): void
     {
+        // Sin sobrescribir el timeout: vale el de config/mail.php (MAIL_TIMEOUT, 5 s por defecto)
+        $this->assertEquals(5, config('mail.mailers.smtp.timeout'));
         config([
             'queue.default' => 'sync',
             'mail.default' => 'failover',
             'mail.mailers.smtp.host' => '127.0.0.1',
             'mail.mailers.smtp.port' => 1,
-            'mail.mailers.smtp.timeout' => 1,
         ]);
+        $inicio = microtime(true);
 
         $reserva = Reserva::factory()->create();
 
@@ -219,7 +221,9 @@ class NotificacionTest extends TestCase
         // Los try/catch de los servicios podrían ocultar el fallo: el envío
         // directo demuestra que es el transporte failover quien lo absorbe.
         Mail::to($reserva->cliente->email)->send(new ComprobantePago($pago->fresh()));
-        $this->addToAssertionCount(1);
+
+        // Un puerto SMTP filtrado no puede bloquear la petición el minuto por defecto
+        $this->assertLessThan(10, microtime(true) - $inicio);
     }
 
     private function hilo(): Conversacion

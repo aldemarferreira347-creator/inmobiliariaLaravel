@@ -18,7 +18,9 @@ use App\Servicios\PagoService;
 use App\Servicios\StripeCardService;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\File;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -151,6 +153,30 @@ class TareasPendientesTest extends TestCase
         $this->get('/')->assertOk();
 
         $this->assertSame(EstadoReserva::PendientePago, $reserva->fresh()->estado);
+    }
+
+    // Sin cron nadie borra las entradas vencidas de la caché en archivos: lo hace el planificador
+    public function test_se_podan_las_entradas_vencidas_de_la_cache_en_archivos(): void
+    {
+        $carpeta = sys_get_temp_dir().'/cache-poda-'.uniqid();
+        config(['cache.default' => 'file', 'cache.stores.file.path' => $carpeta, 'cache.stores.file.lock_path' => $carpeta]);
+
+        try {
+            Cache::put('vigente', 'x', now()->addHour());
+            Cache::put('vencida', 'x', now()->addMinute());
+            $vigente = Cache::getStore()->path('vigente');
+            $vencida = Cache::getStore()->path('vencida');
+            $this->assertFileExists($vencida);
+
+            $this->travel(2)->minutes();
+            $this->get('/')->assertOk();
+
+            $this->assertFileExists($vigente);
+            $this->assertFileDoesNotExist($vencida);
+            $this->assertTrue(Cache::has('tareas:ultima-ejecucion'));
+        } finally {
+            File::deleteDirectory($carpeta);
+        }
     }
 
     private function pagoProcesandoDeHace(int $minutos): Pago
