@@ -1,0 +1,12 @@
+Options -Indexes
+RewriteEngine On
+
+# Nunca servir archivos ocultos ni directorios internos
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^(app|bootstrap|config|database|lang|resources|routes|storage/(app/private|framework|logs)|vendor)(/|$) - [F,L]
+
+# Archivos públicos subidos (sustituye a storage:link)
+RewriteRule ^storage/(.*)$ /storage/app/public/$1 [END]
+
+# Todo lo demás al front controller de Laravel
+RewriteRule (.*) /public/$1 [L]
