@@ -153,6 +153,15 @@ class Reserva extends Model
             ->first();
     }
 
+    // HU-19.1: el pago aprobado más reciente (usa la relación cargada si existe)
+    public function ultimoPagoConfirmado(): ?Pago
+    {
+        return $this->pagos
+            ->where('estado', EstadoPago::Pagado)
+            ->sortByDesc(fn (Pago $pago) => $pago->revisado_en ?? $pago->created_at)
+            ->first();
+    }
+
     public function ultimoPagoRechazado(): ?Pago
     {
         return $this->pagos()->where('estado', EstadoPago::Rechazado)->first();

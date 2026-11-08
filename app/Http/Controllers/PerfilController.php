@@ -45,7 +45,7 @@ class PerfilController extends Controller
             'reservas' => $usuario->reservas()
                 ->where('estado', EstadoReserva::Confirmada)
                 ->deArriendo()
-                ->with('inmueble', 'contrato')
+                ->with('inmueble', 'contrato', 'pagos')
                 ->recientes()
                 ->get(),
             'ventas' => $usuario->ventas()

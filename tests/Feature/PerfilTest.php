@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Contrato;
+use App\Models\Pago;
+use App\Models\Reserva;
 use App\Models\User;
+use App\Models\Venta;
 use Database\Factories\UserFactory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -172,5 +176,78 @@ class PerfilTest extends TestCase
         $this->post(route('perfil.foto.store'), [
             'foto' => UploadedFile::fake()->image('foto.webp'),
         ])->assertSessionHasErrors('foto');
+    }
+
+    private function arriendoDelCliente(bool $conContrato = true): Reserva
+    {
+        $reserva = Reserva::factory()->confirmada()->create();
+
+        if ($conContrato) {
+            Contrato::factory()->create(['reserva_id' => $reserva->id]);
+        }
+
+        return $reserva->refresh();
+    }
+
+    public function test_hu_19_1_mis_arriendos_muestra_inmueble_contrato_valor_ultimo_pago_y_estado(): void
+    {
+        $reserva = $this->arriendoDelCliente();
+        Pago::factory()->pagado()->create(['reserva_id' => $reserva->id, 'monto' => 1_234_000]);
+        Pago::factory()->rechazado()->create(['reserva_id' => $reserva->id, 'monto' => 999_000]);
+
+        $this->actingAs($reserva->cliente)
+            ->get(route('perfil.edit'))
+            ->assertOk()
+            ->assertSeeInOrder(['Mis arriendos', 'Inmueble', 'Contrato', 'Valor mensual', 'Último pago', 'Estado'])
+            ->assertSee($reserva->inmueble->titulo)
+            ->assertSee($reserva->contrato->numero_contrato)
+            ->assertSee($reserva->contrato->valor_formateado)
+            ->assertSee('$1.234.000')
+            ->assertSee($reserva->contrato->estado->etiqueta());
+    }
+
+    public function test_hu_19_2_mis_compras_muestra_inmueble_asesor_precio_fecha_y_estado(): void
+    {
+        $venta = Venta::factory()->create();
+
+        $this->actingAs($venta->cliente)
+            ->get(route('perfil.edit'))
+            ->assertOk()
+            ->assertSee($venta->inmueble->titulo)
+            ->assertSee($venta->asesor->nombre)
+            ->assertSee($venta->precio_formateado)
+            ->assertSee($venta->fecha_venta->format('d/m/Y'))
+            ->assertSee($venta->estado->etiqueta());
+    }
+
+    public function test_hu_19_3_descargar_contrato_devuelve_el_pdf(): void
+    {
+        Storage::fake('local');
+        $reserva = $this->arriendoDelCliente();
+        $contrato = $reserva->contrato;
+        Storage::disk('local')->put('contratos/firmado.pdf', '%PDF-1.4
+%fin
+');
+        $contrato->update(['archivo_ruta' => 'contratos/firmado.pdf']);
+
+        $this->actingAs($reserva->cliente)
+            ->get(route('perfil.edit'))
+            ->assertSee('Descargar contrato');
+
+        $this->actingAs($reserva->cliente)
+            ->get(route('contratos.descargar', $contrato))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_hu_19_4_reserva_confirmada_sin_contrato_muestra_contrato_pendiente(): void
+    {
+        $reserva = $this->arriendoDelCliente(conContrato: false);
+
+        $this->actingAs($reserva->cliente)
+            ->get(route('perfil.edit'))
+            ->assertOk()
+            ->assertSee($reserva->inmueble->titulo)
+            ->assertSee('Contrato pendiente');
     }
 }

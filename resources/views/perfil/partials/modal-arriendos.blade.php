@@ -25,6 +25,7 @@
                             <th>Inmueble</th>
                             <th>Contrato</th>
                             <th>Valor mensual</th>
+                            <th>Último pago</th>
                             <th>Vigencia</th>
                             <th>Estado</th>
                             <th data-no-sort>Documento</th>
@@ -33,6 +34,7 @@
                     <tbody>
                         @foreach ($reservas as $reserva)
                             @php($contrato = $reserva->contrato)
+                            @php($ultimoPago = $reserva->ultimoPagoConfirmado())
                             <tr>
                                 <td>
                                     <span class="td-title">{{ $reserva->inmueble->titulo }}</span>
@@ -45,6 +47,14 @@
                                 </td>
                                 <td class="td-price">
                                     {{ $contrato?->valor_formateado ?? $reserva->monto_formateado }}
+                                </td>
+                                <td class="td-nowrap">
+                                    @if ($ultimoPago)
+                                        {{ $ultimoPago->monto_formateado }}
+                                        <span class="td-subtitle">{{ ($ultimoPago->revisado_en ?? $ultimoPago->created_at)->format('d/m/Y') }}</span>
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="td-nowrap">{{ $contrato?->vigencia ?? '—' }}</td>
                                 <td>
@@ -59,7 +69,7 @@
                                 <td>
                                     @if ($contrato && $contrato->tieneArchivo())
                                         <a href="{{ route('contratos.descargar', $contrato) }}"
-                                            class="btn-icon btn-icon--info" title="Descargar contrato">
+                                            class="btn-icon btn-icon--info" title="Descargar contrato" aria-label="Descargar contrato">
                                             <x-icon name="download" class="h-4 w-4" />
                                         </a>
                                     @else

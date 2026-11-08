@@ -9,6 +9,7 @@ use App\Enumerados\ModalidadInmueble;
 use App\Models\Contrato;
 use App\Models\HistorialReserva;
 use App\Models\Inmueble;
+use App\Models\Notificacion;
 use App\Models\Reserva;
 use App\Models\User;
 use App\Servicios\ContratoService;
@@ -206,5 +207,52 @@ class ContratoTest extends TestCase
         }
 
         $this->assertSame(0, Contrato::count());
+    }
+
+    public function test_hu_17_1_contrato_desde_reserva_confirmada_queda_vigente_y_ocupa_el_inmueble(): void
+    {
+        $reserva = $this->reservaConfirmada();
+
+        $this->actingAs(User::factory()->administrador()->create())
+            ->post(route('admin.contratos.store'), $this->datos($reserva))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(EstadoContrato::Vigente, Contrato::firstOrFail()->estado);
+        $this->assertSame(EstadoInmueble::Ocupado, $reserva->inmueble->refresh()->estado);
+    }
+
+    public function test_hu_17_2_el_pdf_firmado_aparece_en_el_historial_del_cliente(): void
+    {
+        Storage::fake('local');
+        $reserva = $this->reservaConfirmada();
+        $admin = User::factory()->administrador()->create();
+
+        $this->actingAs($admin)->post(route('admin.contratos.store'), $this->datos($reserva));
+        $contrato = Contrato::firstOrFail();
+        $this->actingAs($admin)->post(route('admin.contratos.documento', $contrato), [
+            'documento' => UploadedFile::fake()->create('contrato.pdf', 200, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($reserva->cliente)
+            ->get(route('perfil.edit'))
+            ->assertOk()
+            ->assertSee(route('contratos.descargar', $contrato), false);
+    }
+
+    public function test_hu_17_4_rescindir_libera_el_inmueble_y_notifica_al_cliente(): void
+    {
+        $reserva = $this->reservaConfirmada();
+        $admin = User::factory()->administrador()->create();
+
+        $this->actingAs($admin)->post(route('admin.contratos.store'), $this->datos($reserva));
+        $contrato = Contrato::firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.contratos.rescindir', $contrato), ['motivo' => 'Acuerdo entre las partes.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(EstadoContrato::Rescindido, $contrato->refresh()->estado);
+        $this->assertSame(EstadoInmueble::Disponible, $reserva->inmueble->refresh()->estado);
+        $this->assertSame(1, Notificacion::where('usuario_id', $reserva->usuario_id)->where('titulo', 'Contrato rescindido')->count());
     }
 }
