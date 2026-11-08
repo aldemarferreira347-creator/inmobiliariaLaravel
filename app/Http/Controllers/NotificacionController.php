@@ -15,32 +15,37 @@ use Illuminate\View\View;
  */
 class NotificacionController extends Controller
 {
-    /** Lista las últimas 100 notificaciones del usuario autenticado, con su conteo de no leídas. */
+    /** Notificaciones por página del centro */
+    private const POR_PAGINA = 30;
+
+    /** Lista las notificaciones del usuario (leídas y no leídas), con el total de no leídas. */
     public function index(Request $request): View
     {
-        $notificaciones = $request->user()->notificaciones()->recientes()->limit(100)->get();
+        $notificaciones = $request->user()->notificaciones()->recientes()->paginate(self::POR_PAGINA);
 
         return view('notificaciones.index', [
             'notificaciones' => $notificaciones,
-            'sinLeer' => $notificaciones->whereNull('leida_en')->count(),
+            'sinLeer' => $request->user()->notificacionesSinLeer(),
         ]);
     }
 
-    /** Marca una notificación propia como leída y la retira de la lista. */
+    /** Marca una notificación propia como leída; se conserva en el centro (HU-15.4). */
     // Filtrar por usuario evita que nadie marque notificaciones ajenas
     public function marcarLeida(Request $request, Notificacion $notificacion): RedirectResponse
     {
         abort_unless($notificacion->usuario_id === $request->user()->id, 403);
 
-        $notificacion->delete();
+        if (! $notificacion->estaLeida()) {
+            $notificacion->update(['leida_en' => now()]);
+        }
 
         return back();
     }
 
-    /** Marca todas las notificaciones pendientes del usuario autenticado como leídas y las retira de la lista. */
+    /** Marca todas las notificaciones pendientes del usuario autenticado como leídas, sin borrarlas. */
     public function marcarTodas(Request $request): RedirectResponse
     {
-        $request->user()->notificaciones()->sinLeer()->delete();
+        $request->user()->notificaciones()->sinLeer()->update(['leida_en' => now()]);
 
         return back()->with(['mensaje' => 'Todas tus notificaciones quedaron marcadas como leídas.', 'tipo' => 'success']);
     }

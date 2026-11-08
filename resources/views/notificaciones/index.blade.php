@@ -20,7 +20,7 @@
         <div class="page-hero">
             <span class="page-hero-badge"><x-icon name="bell" class="h-3.5 w-3.5" /> Mi cuenta</span>
             <h1>Notificaciones</h1>
-            <p>{{ $sinLeer }} sin leer · {{ $notificaciones->count() }} en total</p>
+            <p>{{ $sinLeer }} sin leer · {{ $notificaciones->total() }} en total</p>
         </div>
     @endunless
 
@@ -32,7 +32,7 @@
         <div class="notif-header">
             <div>
                 <h2>Centro de notificaciones</h2>
-                <p class="notif-subtitle">{{ $sinLeer }} sin leer · {{ $notificaciones->count() }} en total</p>
+                <p class="notif-subtitle">{{ $sinLeer }} sin leer · {{ $notificaciones->total() }} en total</p>
             </div>
 
             @if ($sinLeer > 0)
@@ -55,7 +55,7 @@
         @else
             <div class="notif-filters" role="tablist">
                 <button type="button" class="notif-filter-tab is-active" data-notif-filtro="todas">
-                    Todas <span class="notif-filter-count">{{ $notificaciones->count() }}</span>
+                    Todas <span class="notif-filter-count">{{ $notificaciones->total() }}</span>
                 </button>
                 <button type="button" class="notif-filter-tab" data-notif-filtro="no-leidas">
                     No leídas <span class="notif-filter-count">{{ $sinLeer }}</span>
@@ -83,12 +83,16 @@
                                 </div>
 
                                 <div class="notif-body">
-                                    <h4>{{ $notificacion->titulo }}</h4>
+                                    <h4>
+                                        {{ $notificacion->titulo }}
+                                        <span class="sr-only">{{ $notificacion->estaLeida() ? '(Leída)' : '(No leída)' }}</span>
+                                    </h4>
                                     <p>{{ $notificacion->mensaje }}</p>
 
                                     <span class="notif-time">
                                         <x-icon name="clock" class="h-3 w-3" />
                                         {{ $notificacion->creado_en->format('d/m/Y · H:i') }}
+                                        · {{ $notificacion->estaLeida() ? 'Leída' : 'No leída' }}
                                     </span>
 
                                     @if ($enlace = \App\Soporte\EnlaceNotificacion::para($notificacion, auth()->user()))
@@ -112,6 +116,8 @@
                     </div>
                 @endforeach
             </div>
+
+            {{ $notificaciones->links() }}
         @endif
     </div>
 @endsection

@@ -59,6 +59,8 @@ Proveedor SMTP según la sonda:
 - Si no, `smtp_587_gmail` abierto: Gmail con contraseña de aplicación, `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`.
 - Si ambos están cerrados: el sistema funciona igual y los correos quedan solo en el log (riesgo aceptado: el cliente no recibe comprobantes ni enlaces de recuperación de contraseña por correo).
 
+Envío masivo (HU-22.1): con 200 usuarios de factory, SQLite y `QUEUE_CONNECTION=sync` la petición «enviar a todos» con correo termina muy por debajo de 20 s (`NotificacionTest::test_hu_22_1_envio_a_todos_con_correo_y_200_usuarios_termina_en_menos_de_20_s`, mailer de pruebas). Con SMTP real cada correo añade latencia en la misma petición; si el hosting corta la petición, desmarcar «Enviar también por correo electrónico» (la notificación in-app siempre se crea en una sola consulta).
+
 ## Stripe sin webhook (Tarea 10)
 
 Ningún flujo de pago exige el webhook entrante:
